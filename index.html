@@ -1,0 +1,2952 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StaminaQuest v2 - 可処分時間＆目標達成RPG</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts: Inter & Noto Sans JP -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', '"Noto Sans JP"', 'sans-serif'],
+          },
+          animation: {
+            'pulse-slow': 'pulse 2.8s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'glow': 'glow 2s ease-in-out infinite alternate',
+            'float-up': 'floatUp 1.1s ease-out forwards',
+            'pop': 'pop 0.24s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+          },
+          keyframes: {
+            glow: {
+              '0%': { boxShadow: '0 0 8px rgba(251, 191, 36, 0.35), 0 0 16px rgba(251, 191, 36, 0.15)' },
+              '100%': { boxShadow: '0 0 18px rgba(251, 191, 36, 0.75), 0 0 32px rgba(251, 191, 36, 0.35)' },
+            },
+            floatUp: {
+              '0%': { opacity: '1', transform: 'translateY(0) scale(0.95)' },
+              '100%': { opacity: '0', transform: 'translateY(-48px) scale(1.12)' },
+            },
+            pop: {
+              '0%': { transform: 'scale(0.95)', opacity: '0.7' },
+              '60%': { transform: 'scale(1.02)', opacity: '1' },
+              '100%': { transform: 'scale(1)', opacity: '1' },
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    body {
+      background-color: #030712;
+      background-image:
+        radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.14) 0px, transparent 48%),
+        radial-gradient(at 100% 0%, rgba(79, 70, 229, 0.18) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(14, 165, 233, 0.08) 0px, transparent 50%);
+      background-attachment: fixed;
+      color: #f1f5f9;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* スクロールバー */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.75); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 1); }
+
+    /* スタミナゲージの光沢アニメーション */
+    .stamina-bar-shine {
+      position: relative;
+      overflow: hidden;
+    }
+    .stamina-bar-shine::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 55%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+      animation: shine 2.8s infinite;
+    }
+    @keyframes shine {
+      0% { left: -100%; }
+      55% { left: 140%; }
+      100% { left: 140%; }
+    }
+
+    /* SVGリングの滑らかなトランジション */
+    .ring-circle {
+      transition: stroke-dashoffset 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* 紙吹雪 */
+    .confetti-piece {
+      position: fixed;
+      width: 8px;
+      height: 12px;
+      pointer-events: none;
+      z-index: 9999;
+      border-radius: 2px;
+    }
+  </style>
+  <!-- PWA対応設定 -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <meta name="mobile-web-app-capable" content="yes">
+</head>
+<body class="min-h-screen pb-24 md:pb-12 antialiased selection:bg-emerald-500/30">
+
+  <!-- ==================== 常時表示トップヘッダー ==================== -->
+  <header class="sticky top-0 z-30 bg-slate-950/88 backdrop-blur-lg border-b border-slate-800/80">
+    <div class="max-w-5xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2">
+      <!-- ロゴ & レベル -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-400 via-cyan-500 to-indigo-500 p-[2px] shrink-0 shadow-lg shadow-emerald-500/20">
+          <div class="w-full h-full rounded-[10px] bg-slate-950 flex items-center justify-center">
+            <i data-lucide="zap" class="w-5 h-5 text-emerald-400"></i>
+          </div>
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5">
+            <h1 class="text-sm sm:text-base font-black tracking-tight bg-gradient-to-r from-white via-emerald-200 to-indigo-200 bg-clip-text text-transparent truncate">
+              StaminaQuest <span class="text-[10px] font-extrabold text-emerald-400">v2</span>
+            </h1>
+            <span id="header-level-badge" class="px-1.5 py-0.5 text-[10px] font-extrabold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0">
+              Lv.1
+            </span>
+          </div>
+          <!-- QP経験値ミニバー -->
+          <div class="flex items-center gap-1.5 mt-0.5">
+            <div class="w-20 sm:w-28 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div id="header-qp-bar" class="h-full bg-gradient-to-r from-emerald-400 to-indigo-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            <span id="header-qp-text" class="text-[10px] text-slate-400 font-semibold tabular-nums">0 QP</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右側ステータス群（ストリーク・コイン・通知・設定） -->
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <!-- 連続ログインボタン -->
+        <button onclick="openLoginBonusModal()" title="連続ログインボーナス" class="relative flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-orange-500/12 hover:bg-orange-500/20 border border-orange-500/30 transition active:scale-95">
+          <span class="text-sm leading-none">🔥</span>
+          <span id="header-streak-text" class="text-xs sm:text-sm font-extrabold text-orange-300 tabular-nums">0日</span>
+          <span id="header-streak-dot" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-slate-950 animate-pulse"></span>
+        </button>
+
+        <!-- 所持コイン -->
+        <div class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30">
+          <i data-lucide="coins" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400"></i>
+          <span id="header-coins" class="text-xs sm:text-sm font-extrabold text-amber-300 tabular-nums">0</span>
+        </div>
+
+        <!-- 通知ON/OFFアイコン -->
+        <button onclick="toggleNotificationQuick()" id="header-notif-btn" title="通知設定の切替" class="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 transition active:scale-95">
+          <i id="header-notif-icon" data-lucide="bell-off" class="w-4 h-4"></i>
+        </button>
+
+        <!-- 設定ボタン -->
+        <button onclick="openSettingsModal()" title="設定・テスト・データ管理" class="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 transition active:scale-95">
+          <i data-lucide="settings" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテナ -->
+  <main class="max-w-5xl mx-auto px-3 sm:px-4 pt-4 space-y-4">
+
+    <!-- アプリ内通知アラート領域（スタミナ満タン・残り15分・連続記録途切れ警告） -->
+    <div id="in-app-alerts" class="space-y-2"></div>
+
+    <!-- 常時表示：スタミナ＆カウントダウンバー -->
+    <section class="rounded-2xl bg-slate-900/85 border border-slate-800/90 p-4 sm:p-5 shadow-xl backdrop-blur-sm space-y-3.5">
+      <!-- 満タン溢れ警告 / 枯渇バナー -->
+      <div id="stamina-alert-banner" class="hidden rounded-xl px-4 py-3 flex items-center gap-3 text-xs sm:text-sm font-bold transition-all">
+        <i id="stamina-alert-icon" data-lucide="alert-triangle" class="w-5 h-5 shrink-0"></i>
+        <span id="stamina-alert-text" class="leading-snug"></span>
+      </div>
+
+      <!-- スタミナ数値 & タイマー -->
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2.5">
+        <div>
+          <div class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            <i data-lucide="battery-charging" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span>可処分時間スタミナ</span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-0.5">
+            <span id="stamina-current" class="text-3xl sm:text-4xl font-black tracking-tight text-white tabular-nums">180</span>
+            <span class="text-base sm:text-lg font-bold text-slate-500">/</span>
+            <span id="stamina-max" class="text-base sm:text-lg font-bold text-slate-400 tabular-nums">180</span>
+            <span class="text-xs font-semibold text-slate-400 ml-0.5">ST (分相当)</span>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <div class="px-2.5 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center gap-1.5">
+            <i data-lucide="timer" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span class="text-slate-400">次+1ST:</span>
+            <span id="timer-next-regen" class="font-extrabold text-cyan-300 tabular-nums">--:--</span>
+          </div>
+          <div class="px-2.5 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center gap-1.5">
+            <i data-lucide="clock" class="w-3.5 h-3.5 text-indigo-400"></i>
+            <span class="text-slate-400">満タン予定:</span>
+            <span id="timer-full-eta" class="font-extrabold text-indigo-300 tabular-nums">満タン</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- スタミナゲージ -->
+      <div class="relative w-full h-4 sm:h-5 rounded-full bg-slate-950 border border-slate-800 p-0.5 shadow-inner">
+        <div id="stamina-bar-fill" class="stamina-bar-shine h-full rounded-full bg-gradient-to-r from-emerald-500 via-cyan-400 to-indigo-400 transition-all duration-500" style="width: 100%"></div>
+      </div>
+    </section>
+
+    <!-- デスクトップ用メインナビゲーション -->
+    <nav class="hidden md:grid grid-cols-5 gap-1.5 p-1.5 rounded-2xl bg-slate-900/90 border border-slate-800">
+      <button onclick="switchTab('home')" data-tab="home" class="nav-tab flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-bold transition">
+        <i data-lucide="home" class="w-4 h-4"></i>
+        <span>ホーム</span>
+      </button>
+      <button onclick="switchTab('report')" data-tab="report" class="nav-tab flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-bold transition">
+        <i data-lucide="activity" class="w-4 h-4"></i>
+        <span>達成レポート</span>
+      </button>
+      <button onclick="switchTab('missions')" data-tab="missions" class="nav-tab relative flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-bold transition">
+        <i data-lucide="trophy" class="w-4 h-4"></i>
+        <span>ミッション</span>
+        <span class="mission-badge hidden absolute top-1.5 right-2.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">0</span>
+      </button>
+      <button onclick="switchTab('shop')" data-tab="shop" class="nav-tab flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-bold transition">
+        <i data-lucide="gift" class="w-4 h-4"></i>
+        <span>ショップ</span>
+      </button>
+      <button onclick="switchTab('logs')" data-tab="logs" class="nav-tab flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-bold transition">
+        <i data-lucide="scroll-text" class="w-4 h-4"></i>
+        <span>ログ</span>
+      </button>
+    </nav>
+
+    <!-- ==================== タブ1: ホーム（達成リング ＋ クエスト＆単発ToDo） ==================== -->
+    <section id="tab-home" class="tab-content space-y-5">
+
+      <!-- ログインボーナス未受取バナー -->
+      <div id="login-bonus-banner" class="hidden rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-rose-500/15 border border-amber-400/40 p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-xl shrink-0">🎁</div>
+          <div>
+            <p class="text-sm font-extrabold text-amber-200">今日のログインボーナスが届いています！</p>
+            <p id="login-banner-sub" class="text-xs text-amber-100/80">毎日ログインして連続記録とコインを増やしましょう</p>
+          </div>
+        </div>
+        <button onclick="openLoginBonusModal()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/25 active:scale-95 transition">
+          スタンプを押す
+        </button>
+      </div>
+
+      <!-- Google Fit風 今日の達成リングカード -->
+      <div class="rounded-2xl bg-slate-900/80 border border-slate-800 p-4 sm:p-5 shadow-lg">
+        <div class="flex flex-col sm:flex-row items-center gap-5">
+          <!-- 二重SVGリング -->
+          <div class="relative w-36 h-36 sm:w-40 sm:h-40 shrink-0 flex items-center justify-center">
+            <svg viewBox="0 0 128 128" class="w-full h-full">
+              <!-- 背景トラック -->
+              <circle cx="64" cy="64" r="54" fill="none" stroke="rgba(16,185,129,0.14)" stroke-width="10" />
+              <circle cx="64" cy="64" r="40" fill="none" stroke="rgba(99,102,241,0.16)" stroke-width="10" />
+              <!-- 外側リング: 今日のやるべきこと -->
+              <circle id="home-ring-duty" class="ring-circle" cx="64" cy="64" r="54" fill="none"
+                stroke="#10b981" stroke-width="10" stroke-linecap="round"
+                stroke-dasharray="339.292" stroke-dashoffset="339.292"
+                transform="rotate(-90 64 64)" />
+              <!-- 内側リング: 今日の合計消費ST -->
+              <circle id="home-ring-total" class="ring-circle" cx="64" cy="64" r="40" fill="none"
+                stroke="#6366f1" stroke-width="10" stroke-linecap="round"
+                stroke-dasharray="251.327" stroke-dashoffset="251.327"
+                transform="rotate(-90 64 64)" />
+            </svg>
+            <!-- 中央アイコン＆数値 -->
+            <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+              <span id="home-ring-center-icon" class="text-lg leading-none">🎯</span>
+              <span id="home-ring-pct" class="text-lg font-black text-white tabular-nums mt-0.5">0%</span>
+              <span class="text-[10px] font-bold text-slate-400">今日の達成</span>
+            </div>
+          </div>
+
+          <!-- 右側リング詳細 -->
+          <div class="flex-1 w-full space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h2 class="text-base font-extrabold text-white flex items-center gap-2">
+                今日の目標リング
+                <span id="home-achieved-badge" class="hidden px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-extrabold">
+                  🎉 今日は目標を達成しました！
+                </span>
+              </h2>
+              <button onclick="switchTab('report')" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                <span>詳細レポートを見る</span>
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+
+            <!-- 2つの指標 -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div class="rounded-xl bg-slate-950/70 border border-emerald-500/25 p-3 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-3 h-3 rounded-full bg-emerald-400 shrink-0"></span>
+                  <div>
+                    <p class="text-[11px] font-bold text-emerald-300">やるべきこと目標</p>
+                    <p class="text-sm font-black text-white tabular-nums">
+                      <span id="home-duty-val">0</span> <span class="text-xs font-semibold text-slate-400">/ <span id="home-duty-goal">90</span> ST</span>
+                    </p>
+                  </div>
+                </div>
+                <span id="home-duty-pct" class="text-xs font-extrabold text-emerald-400 tabular-nums">0%</span>
+              </div>
+
+              <div class="rounded-xl bg-slate-950/70 border border-indigo-500/25 p-3 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-3 h-3 rounded-full bg-indigo-400 shrink-0"></span>
+                  <div>
+                    <p class="text-[11px] font-bold text-indigo-300">合計消費ST目標</p>
+                    <p class="text-sm font-black text-white tabular-nums">
+                      <span id="home-total-val">0</span> <span class="text-xs font-semibold text-slate-400">/ <span id="home-total-goal">150</span> ST</span>
+                    </p>
+                  </div>
+                </div>
+                <span id="home-total-pct" class="text-xs font-extrabold text-indigo-400 tabular-nums">0%</span>
+              </div>
+            </div>
+
+            <!-- 本日の消費バランスミニバー -->
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px] font-semibold">
+                <span class="text-emerald-300">やるべきこと <span id="home-bal-duty-pct">0</span>%</span>
+                <span id="home-bal-msg" class="text-slate-400 truncate px-2"></span>
+                <span class="text-purple-300">遊び <span id="home-bal-play-pct">0</span>%</span>
+              </div>
+              <div class="w-full h-2 rounded-full bg-slate-950 border border-slate-800 overflow-hidden flex">
+                <div id="home-bal-duty-bar" class="h-full bg-emerald-400 transition-all duration-500" style="width: 0%"></div>
+                <div id="home-bal-play-bar" class="h-full bg-purple-400 transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 繰り返しクエスト / 単発ToDo 切替ヘッダー -->
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="inline-flex p-1 rounded-xl bg-slate-900 border border-slate-800">
+          <button onclick="switchHomeSubTab('quests')" id="subtab-btn-quests" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-extrabold transition flex items-center gap-1.5">
+            <i data-lucide="repeat" class="w-4 h-4"></i>
+            <span>繰り返しクエスト</span>
+          </button>
+          <button onclick="switchHomeSubTab('todos')" id="subtab-btn-todos" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-extrabold transition flex items-center gap-1.5">
+            <i data-lucide="check-square" class="w-4 h-4"></i>
+            <span>単発ToDo</span>
+            <span id="todo-active-count" class="px-1.5 py-0.5 rounded-full bg-indigo-500/25 text-indigo-200 text-[10px] font-black">0</span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="btn-add-quest" onclick="openQuestModal()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-bold shadow-lg shadow-indigo-600/25 transition active:scale-95">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>クエスト追加</span>
+          </button>
+          <button id="btn-add-todo" onclick="openTodoModal()" class="hidden flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold shadow-lg shadow-emerald-600/25 transition active:scale-95">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>単発ToDo追加</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- サブビューA: 繰り返しクエスト -->
+      <div id="home-subtab-quests" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- やるべきこと -->
+        <div class="rounded-2xl bg-slate-900/65 border border-emerald-500/25 p-4 space-y-3">
+          <div class="flex items-center gap-2.5 pb-2 border-b border-emerald-500/20">
+            <span class="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <i data-lucide="book-open-check" class="w-4 h-4"></i>
+            </span>
+            <div>
+              <h3 class="text-sm font-extrabold text-emerald-300">やるべきこと（勉強・手続き等）</h3>
+              <p class="text-[11px] text-slate-400">コイン＆QP獲得・目標リングの外側を進める</p>
+            </div>
+          </div>
+          <div id="quest-list-duty" class="space-y-2.5"></div>
+        </div>
+
+        <!-- 遊び・ゲーム -->
+        <div class="rounded-2xl bg-slate-900/65 border border-purple-500/25 p-4 space-y-3">
+          <div class="flex items-center gap-2.5 pb-2 border-b border-purple-500/20">
+            <span class="w-8 h-8 rounded-lg bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+              <i data-lucide="gamepad-2" class="w-4 h-4"></i>
+            </span>
+            <div>
+              <h3 class="text-sm font-extrabold text-purple-300">遊び・ゲーム（趣味・リフレッシュ）</h3>
+              <p class="text-[11px] text-slate-400">同じスタミナ枠で堂々と消化・やりすぎを防止</p>
+            </div>
+          </div>
+          <div id="quest-list-play" class="space-y-2.5"></div>
+        </div>
+      </div>
+
+      <!-- サブビューB: 単発ToDoリスト（1回だけのタスク） -->
+      <div id="home-subtab-todos" class="hidden space-y-4">
+        <!-- 未完了ToDo -->
+        <div class="rounded-2xl bg-slate-900/70 border border-slate-800 p-4 space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+            <div class="flex items-center gap-2">
+              <i data-lucide="list-todo" class="w-4 h-4 text-emerald-400"></i>
+              <h3 class="text-sm font-extrabold text-white">未完了の単発ToDo（1回完了したら終了）</h3>
+            </div>
+            <span class="text-[11px] text-slate-400">チェックでスタミナ消費＆完了</span>
+          </div>
+          <div id="todo-list-active" class="space-y-2"></div>
+        </div>
+
+        <!-- 完了済みToDo -->
+        <div class="rounded-2xl bg-slate-900/45 border border-slate-800/70 p-4 space-y-2.5">
+          <button onclick="toggleCompletedTodos()" class="w-full flex items-center justify-between text-xs font-bold text-slate-400 hover:text-slate-200">
+            <span class="flex items-center gap-1.5">
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500"></i>
+              完了済みToDo（<span id="todo-done-count">0</span>件）
+            </span>
+            <i id="todo-done-chevron" data-lucide="chevron-down" class="w-4 h-4 transition-transform"></i>
+          </button>
+          <div id="todo-list-completed" class="space-y-2 pt-1"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ==================== タブ2: 達成レポート（Google Fit風） ==================== -->
+    <section id="tab-report" class="tab-content hidden space-y-5">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 class="text-lg font-extrabold text-white flex items-center gap-2">
+            <i data-lucide="activity" class="w-5 h-5 text-emerald-400"></i>
+            達成レポート
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">今日・今週・今月の目標達成状況と、勉強と遊びのバランスを振り返れます。</p>
+        </div>
+        <button onclick="openSettingsModal()" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800">
+          <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+          <span>目標STを変更</span>
+        </button>
+      </div>
+
+      <!-- 今日 / 今週 / 今月 の3カード -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="report-period-cards"></div>
+
+      <!-- 今週の7日間ミニリング（Google Fit風） -->
+      <div class="rounded-2xl bg-slate-900/80 border border-slate-800 p-4 sm:p-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-extrabold text-white flex items-center gap-2">
+            <i data-lucide="calendar-days" class="w-4 h-4 text-indigo-400"></i>
+            今週の7日間リング（月〜日）
+          </h3>
+          <div class="flex items-center gap-3 text-[11px] font-semibold">
+            <span class="flex items-center gap-1 text-emerald-300"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>やるべきこと</span>
+            <span class="flex items-center gap-1 text-indigo-300"><span class="w-2 h-2 rounded-full bg-indigo-400"></span>合計ST</span>
+          </div>
+        </div>
+        <div id="report-week-rings" class="grid grid-cols-7 gap-1.5 sm:gap-3 pt-1"></div>
+      </div>
+
+      <!-- やるべきこと vs 遊び バランス分析（今日・今週・今月） -->
+      <div class="rounded-2xl bg-slate-900/80 border border-slate-800 p-4 sm:p-5 space-y-3">
+        <h3 class="text-sm font-extrabold text-white flex items-center gap-2">
+          <i data-lucide="scale" class="w-4 h-4 text-cyan-400"></i>
+          「やるべきこと」vs「遊び」消費バランス
+        </h3>
+        <div id="report-balance-bars" class="space-y-3"></div>
+      </div>
+
+      <!-- 今月の達成カレンダー -->
+      <div class="rounded-2xl bg-slate-900/80 border border-slate-800 p-4 sm:p-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 id="report-calendar-title" class="text-sm font-extrabold text-white flex items-center gap-2">
+            <i data-lucide="calendar" class="w-4 h-4 text-emerald-400"></i>
+            今月の達成カレンダー
+          </h3>
+          <span class="text-[11px] text-slate-400">🏆=目標達成 / 数値=消費ST</span>
+        </div>
+        <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-slate-400 pb-1">
+          <div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="text-cyan-400">土</div><div class="text-rose-400">日</div>
+        </div>
+        <div id="report-calendar-grid" class="grid grid-cols-7 gap-1.5"></div>
+      </div>
+    </section>
+
+    <!-- ==================== タブ3: ミッション（デイリー/ウィークリー/マンスリー） ==================== -->
+    <section id="tab-missions" class="tab-content hidden space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-extrabold text-white flex items-center gap-2">
+            <i data-lucide="trophy" class="w-5 h-5 text-amber-400"></i>
+            目標ミッション＆ボーナス
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">条件を達成してコインをゲット！期間が切り替わると自動でリセットされます。</p>
+        </div>
+        <button onclick="openMissionModal()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs sm:text-sm font-extrabold shadow-lg shadow-amber-500/25 transition active:scale-95">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>目標を追加</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 p-1 rounded-xl bg-slate-900 border border-slate-800">
+        <button onclick="switchMissionPeriod('daily')" data-period="daily" class="mission-period-btn relative py-2 px-2 rounded-lg text-xs sm:text-sm font-bold transition">
+          デイリー
+          <span id="badge-daily" class="hidden ml-1 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black">0</span>
+        </button>
+        <button onclick="switchMissionPeriod('weekly')" data-period="weekly" class="mission-period-btn relative py-2 px-2 rounded-lg text-xs sm:text-sm font-bold transition">
+          ウィークリー
+          <span id="badge-weekly" class="hidden ml-1 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black">0</span>
+        </button>
+        <button onclick="switchMissionPeriod('monthly')" data-period="monthly" class="mission-period-btn relative py-2 px-2 rounded-lg text-xs sm:text-sm font-bold transition">
+          マンスリー
+          <span id="badge-monthly" class="hidden ml-1 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black">0</span>
+        </button>
+      </div>
+
+      <div id="mission-period-info" class="text-xs text-slate-400 px-1"></div>
+      <div id="mission-list" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+    </section>
+
+    <!-- ==================== タブ4: ご褒美ショップ ==================== -->
+    <section id="tab-shop" class="tab-content hidden space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-extrabold text-white flex items-center gap-2">
+            <i data-lucide="gift" class="w-5 h-5 text-pink-400"></i>
+            ご褒美ショップ
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">貯めたコインを現実のご褒美と交換して、楽しく継続しましょう。</p>
+        </div>
+        <button onclick="openRewardModal()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs sm:text-sm font-bold shadow-lg shadow-pink-600/25 transition active:scale-95">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>ご褒美を登録</span>
+        </button>
+      </div>
+      <div id="shop-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- ==================== タブ5: 消費ログ ==================== -->
+    <section id="tab-logs" class="tab-content hidden space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-extrabold text-white flex items-center gap-2">
+            <i data-lucide="scroll-text" class="w-5 h-5 text-cyan-400"></i>
+            消費＆獲得ログ
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">誤って実行したクエストやToDoは「取り消し」でスタミナを返還できます。</p>
+        </div>
+        <select id="log-filter" onchange="renderLogs()" class="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-200 focus:outline-none focus:border-indigo-500">
+          <option value="all">すべて表示</option>
+          <option value="duty">やるべきこと</option>
+          <option value="play">遊び・ゲーム</option>
+          <option value="todo">単発ToDoのみ</option>
+          <option value="reward">ご褒美交換</option>
+        </select>
+      </div>
+      <div id="log-list" class="space-y-2"></div>
+    </section>
+
+  </main>
+
+  <!-- モバイル用ボトムナビゲーション（5タブ） -->
+  <nav class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-slate-950/95 backdrop-blur-lg border-t border-slate-800 px-1.5 py-1.5">
+    <div class="grid grid-cols-5 gap-1">
+      <button onclick="switchTab('home')" data-tab="home" class="nav-tab-mobile flex flex-col items-center justify-center py-1.5 rounded-xl text-[10px] font-bold transition">
+        <i data-lucide="home" class="w-5 h-5 mb-0.5"></i>
+        <span>ホーム</span>
+      </button>
+      <button onclick="switchTab('report')" data-tab="report" class="nav-tab-mobile flex flex-col items-center justify-center py-1.5 rounded-xl text-[10px] font-bold transition">
+        <i data-lucide="activity" class="w-5 h-5 mb-0.5"></i>
+        <span>レポート</span>
+      </button>
+      <button onclick="switchTab('missions')" data-tab="missions" class="nav-tab-mobile relative flex flex-col items-center justify-center py-1.5 rounded-xl text-[10px] font-bold transition">
+        <i data-lucide="trophy" class="w-5 h-5 mb-0.5"></i>
+        <span>ミッション</span>
+        <span class="mission-badge hidden absolute top-0.5 right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">0</span>
+      </button>
+      <button onclick="switchTab('shop')" data-tab="shop" class="nav-tab-mobile flex flex-col items-center justify-center py-1.5 rounded-xl text-[10px] font-bold transition">
+        <i data-lucide="gift" class="w-5 h-5 mb-0.5"></i>
+        <span>ショップ</span>
+      </button>
+      <button onclick="switchTab('logs')" data-tab="logs" class="nav-tab-mobile flex flex-col items-center justify-center py-1.5 rounded-xl text-[10px] font-bold transition">
+        <i data-lucide="scroll-text" class="w-5 h-5 mb-0.5"></i>
+        <span>ログ</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ==================== モーダル: 7日間連続ログインボーナス ==================== -->
+  <div id="modal-login-bonus" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-2xl bg-slate-900 border border-amber-500/40 p-5 shadow-2xl space-y-4 animate-pop">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">🔥</span>
+          <div>
+            <h3 class="text-base font-black text-white">連続ログインボーナス</h3>
+            <p class="text-xs text-amber-300 font-bold">
+              現在 <span id="modal-streak-current">0</span>日連続（最長記録: <span id="modal-streak-longest">0</span>日）
+            </p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-login-bonus')" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- 7日間スタンプカード -->
+      <div id="login-stamp-grid" class="grid grid-cols-4 gap-2"></div>
+
+      <div id="login-bonus-action-area" class="pt-1"></div>
+    </div>
+  </div>
+
+  <!-- ==================== モーダル: 繰り返しクエスト追加/編集 ==================== -->
+  <div id="modal-quest" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-700 p-5 shadow-2xl space-y-4 animate-pop">
+      <div class="flex items-center justify-between">
+        <h3 id="modal-quest-title" class="text-base font-extrabold text-white">繰り返しクエストを追加</h3>
+        <button onclick="closeModal('modal-quest')" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form onsubmit="saveQuest(event)" class="space-y-3.5">
+        <input type="hidden" id="quest-id" />
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">クエスト名</label>
+          <input type="text" id="quest-name" required placeholder="例: 英語の勉強 (30分)" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-indigo-500" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">カテゴリ</label>
+            <select id="quest-category" onchange="onQuestCategoryChange()" class="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-indigo-500">
+              <option value="duty">やるべきこと</option>
+              <option value="play">遊び・ゲーム</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">消費スタミナ (ST)</label>
+            <input type="number" id="quest-cost" required min="1" max="1000" value="30" oninput="autoCalcQuestRewards()" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-indigo-500" />
+          </div>
+        </div>
+        <div id="quest-reward-fields" class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-emerald-300 mb-1">獲得 QP</label>
+            <input type="number" id="quest-qp" required min="0" max="10000" value="30" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-amber-300 mb-1">獲得コイン</label>
+            <input type="number" id="quest-coin" required min="0" max="10000" value="30" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-amber-500" />
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('modal-quest')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300">キャンセル</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white">保存する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== モーダル: 単発ToDo追加/編集 ==================== -->
+  <div id="modal-todo" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-700 p-5 shadow-2xl space-y-4 animate-pop">
+      <div class="flex items-center justify-between">
+        <h3 id="modal-todo-title" class="text-base font-extrabold text-white">単発ToDoを追加</h3>
+        <button onclick="closeModal('modal-todo')" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form onsubmit="saveTodo(event)" class="space-y-3.5">
+        <input type="hidden" id="todo-id" />
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">タスク名</label>
+          <input type="text" id="todo-name" required placeholder="例: 役所に提出する書類を郵送する" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">カテゴリ</label>
+            <select id="todo-category" onchange="onTodoCategoryChange()" class="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500">
+              <option value="duty">やるべきこと</option>
+              <option value="play">遊び・ゲーム</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">消費スタミナ (ST)</label>
+            <input type="number" id="todo-cost" required min="1" max="1000" value="20" oninput="autoCalcTodoCoin()" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-amber-300 mb-1">獲得コイン</label>
+            <input type="number" id="todo-coin" required min="0" max="10000" value="25" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-amber-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">期限日（任意）</label>
+            <input type="date" id="todo-due" class="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('modal-todo')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300">キャンセル</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white">保存する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== モーダル: ミッション追加/編集 ==================== -->
+  <div id="modal-mission" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-700 p-5 shadow-2xl space-y-4 animate-pop">
+      <div class="flex items-center justify-between">
+        <h3 id="modal-mission-title" class="text-base font-extrabold text-white">目標ミッションを追加</h3>
+        <button onclick="closeModal('modal-mission')" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form onsubmit="saveMission(event)" class="space-y-3.5">
+        <input type="hidden" id="mission-id" />
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">目標タイトル</label>
+          <input type="text" id="mission-name" required placeholder="例: 今週やるべきことを400 ST以上消費" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none focus:border-amber-500" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">期間</label>
+            <select id="mission-period" class="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white">
+              <option value="daily">デイリー</option>
+              <option value="weekly">ウィークリー</option>
+              <option value="monthly">マンスリー</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">達成条件</label>
+            <select id="mission-metric" class="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white">
+              <option value="duty_stamina">やるべきこと消費ST</option>
+              <option value="total_stamina">合計消費ST</option>
+              <option value="duty_count">やるべきこと回数</option>
+              <option value="todo_count">単発ToDo完了件数</option>
+              <option value="both_categories">両方楽しむ (目標=1)</option>
+              <option value="daily_claims">デイリー達成回数</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">目標数値</label>
+            <input type="number" id="mission-target" required min="1" max="100000" value="300" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-amber-300 mb-1">報酬コイン</label>
+            <input type="number" id="mission-coin" required min="1" max="100000" value="150" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white" />
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('modal-mission')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300">キャンセル</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-xs font-extrabold text-slate-950">保存する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== モーダル: ご褒美追加/編集 ==================== -->
+  <div id="modal-reward" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-700 p-5 shadow-2xl space-y-4 animate-pop">
+      <div class="flex items-center justify-between">
+        <h3 id="modal-reward-title" class="text-base font-extrabold text-white">ご褒美を登録</h3>
+        <button onclick="closeModal('modal-reward')" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form onsubmit="saveReward(event)" class="space-y-3.5">
+        <input type="hidden" id="reward-id" />
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">ご褒美名</label>
+          <input type="text" id="reward-name" required placeholder="例: カフェで好きなコーヒーを飲む" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">説明・メモ（任意）</label>
+          <input type="text" id="reward-desc" placeholder="例: 勉強を頑張った日のご褒美" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-amber-300 mb-1">必要コイン</label>
+          <input type="number" id="reward-cost" required min="1" max="100000" value="150" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white" />
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('modal-reward')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300">キャンセル</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-xs font-bold text-white">保存する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== モーダル: 設定・通知・目標・テストツール・JSON ==================== -->
+  <div id="modal-settings" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm">
+    <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-slate-900 border border-slate-700 p-5 shadow-2xl space-y-5 animate-pop">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+          <i data-lucide="settings" class="w-5 h-5 text-indigo-400"></i>
+          設定・通知・データ管理
+        </h3>
+        <button onclick="closeModal('modal-settings')" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <!-- 1. スタミナ＆達成目標設定 -->
+      <div class="space-y-3">
+        <h4 class="text-xs font-extrabold uppercase tracking-wider text-emerald-300">スタミナ＆目標ST設定</h4>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-300 mb-1">最大スタミナ (ST)</label>
+            <input type="number" id="set-max-stamina" min="10" max="1440" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-300 mb-1">1 ST回復の分数</label>
+            <input type="number" id="set-regen-min" min="0.1" max="120" step="0.1" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-emerald-300 mb-1">今日の「やるべきこと」目標ST</label>
+            <input type="number" id="set-daily-duty-goal" min="10" max="1440" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-indigo-300 mb-1">今日の「合計消費」目標ST</label>
+            <input type="number" id="set-daily-total-goal" min="10" max="1440" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-300 mb-1">今週の「やるべきこと」目標ST</label>
+            <input type="number" id="set-weekly-duty-goal" min="10" max="10000" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-300 mb-1">今月の「やるべきこと」目標ST</label>
+            <input type="number" id="set-monthly-duty-goal" min="10" max="50000" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white" />
+          </div>
+        </div>
+        <button onclick="saveCoreSettings()" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white transition">
+          スタミナ・目標設定を保存
+        </button>
+      </div>
+
+      <!-- 2. 通知設定（Web Notification API ＋ アプリ内通知） -->
+      <div class="space-y-3 pt-3 border-t border-slate-800">
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-extrabold uppercase tracking-wider text-cyan-300">通知設定</h4>
+          <span id="notif-permission-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">未確認</span>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+          <div>
+            <p class="text-xs font-bold text-white">ブラウザ通知＆アプリ内アラート</p>
+            <p class="text-[11px] text-slate-400">満タン溢れ・満タン直前・連続記録途切れを通知</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="requestNotificationPermission()" class="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-[11px] font-bold text-white">
+              許可リクエスト
+            </button>
+            <button onclick="toggleNotificationEnabled()" id="set-notif-toggle" class="px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition">
+              OFF
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-300 mb-1">満タン前通知（残り分数）</label>
+            <input type="number" id="set-prefull-min" min="1" max="120" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-300 mb-1">連続記録途切れ警告時刻</label>
+            <input type="time" id="set-streak-warn-time" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="saveNotificationSettings()" class="col-span-2 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-cyan-300 border border-slate-700">
+            通知タイミングを保存
+          </button>
+          <button onclick="testOverflowNotification()" class="py-2 px-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-[11px] font-bold text-amber-300">
+            🔔 スタミナ溢れ通知テスト
+          </button>
+          <button onclick="testStreakWarnNotification()" class="py-2 px-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-[11px] font-bold text-rose-300">
+            🔥 連続記録途切れ通知テスト
+          </button>
+        </div>
+
+        <p class="text-[11px] text-slate-400 bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 leading-relaxed">
+          ※ <strong>ブラウザ通知の制約：</strong>Webアプリの仕様上、ブラウザの通知はこのアプリのタブを開いている（バックグラウンド含む）間のみ動作します。タブを完全に閉じている間は通知されません。
+        </p>
+      </div>
+
+      <!-- 3. 折りたたみ式 テスト・デバッグ用パネル -->
+      <div class="pt-3 border-t border-slate-800">
+        <details class="group rounded-xl bg-slate-950/70 border border-slate-800 p-3">
+          <summary class="cursor-pointer text-xs font-extrabold text-purple-300 flex items-center justify-between list-none">
+            <span class="flex items-center gap-1.5">
+              <i data-lucide="flask-conical" class="w-4 h-4"></i>
+              テスト・デバッグ用パネル（動作確認）
+            </span>
+            <i data-lucide="chevron-down" class="w-4 h-4 transition-transform group-open:rotate-180"></i>
+          </summary>
+          <div class="pt-3 mt-3 border-t border-slate-800 space-y-2">
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="adjustStamina(-30)" class="py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-rose-300">-30 ST</button>
+              <button onclick="adjustStamina(30)" class="py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-emerald-300">+30 ST</button>
+              <button onclick="adjustStamina(9999)" class="py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-xs font-bold text-amber-300">スタミナ満タン</button>
+            </div>
+            <button onclick="resetTodayLoginClaim()" class="w-full py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-orange-300">
+              今日のログイン受取状態をリセット
+            </button>
+          </div>
+        </details>
+      </div>
+
+      <!-- 4. JSONバックアップ -->
+      <div class="space-y-2.5 pt-3 border-t border-slate-800">
+        <h4 class="text-xs font-extrabold uppercase tracking-wider text-amber-300">データバックアップ (JSON)</h4>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="exportJSONFile()" class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700">
+            <i data-lucide="download" class="w-4 h-4 text-amber-400"></i>
+            <span>JSON保存</span>
+          </button>
+          <button onclick="copyJSONToClipboard()" class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700">
+            <i data-lucide="copy" class="w-4 h-4 text-cyan-400"></i>
+            <span>JSONコピー</span>
+          </button>
+        </div>
+        <label class="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-dashed border-slate-700 text-xs font-bold text-slate-300 cursor-pointer">
+          <i data-lucide="upload" class="w-4 h-4 text-indigo-400"></i>
+          <span>JSONファイルからインポート</span>
+          <input type="file" accept=".json,application/json" onchange="importJSONFile(event)" class="hidden" />
+        </label>
+        <div class="flex gap-2">
+          <input type="text" id="import-json-text" placeholder="またはJSONテキストを貼り付け..." class="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white" />
+          <button onclick="importJSONText()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-indigo-300">復元</button>
+        </div>
+      </div>
+
+      <!-- 5. 初期化 -->
+      <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
+        <span class="text-xs text-slate-400">すべてのデータを初期状態に戻す</span>
+        <button onclick="requestResetData()" class="px-3.5 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-xs font-bold text-rose-300">
+          データ初期化
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== モーダル: 汎用確認ダイアログ ==================== -->
+  <div id="modal-confirm" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+    <div class="w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-700 p-5 shadow-2xl space-y-4 animate-pop">
+      <div class="flex items-start gap-3">
+        <div class="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+          <i data-lucide="help-circle" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 id="confirm-title" class="text-sm font-extrabold text-white">確認</h3>
+          <p id="confirm-message" class="text-xs text-slate-300 mt-1 leading-relaxed"></p>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2">
+        <button onclick="closeConfirm(false)" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300">キャンセル</button>
+        <button id="confirm-ok-btn" onclick="closeConfirm(true)" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-bold text-white">実行する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- トースト通知コンテナ -->
+  <div id="toast-container" class="fixed top-16 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-xs sm:max-w-sm w-full"></div>
+
+  <script>
+    // =========================================================================
+    // StaminaQuest v2 コアロジック
+    // =========================================================================
+    const STORAGE_KEY = 'staminaQuestData_v2';
+    const LOGIN_REWARDS = [10, 15, 20, 25, 30, 40, 100]; // 7日間サイクルのコイン報酬
+
+    function createDefaultState() {
+      const now = Date.now();
+      return {
+        settings: {
+          maxStamina: 180,          // デフォルト180 ST
+          regenIntervalMinutes: 8,  // 8分で1 ST回復 (24時間で180回復)
+          dailyDutyGoal: 90,        // 外側リング目標
+          dailyTotalGoal: 150,      // 内側リング目標
+          weeklyDutyGoal: 450,      // 今週のやるべきこと目標
+          monthlyDutyGoal: 1800,    // 今月のやるべきこと目標
+          soundEnabled: true,
+        },
+        notifications: {
+          enabled: false,
+          preFullMinutes: 15,
+          streakWarnTime: '21:00',
+          sentFlags: {
+            fullCycleId: null,
+            preFullCycleId: null,
+            streakWarnDate: null,
+          }
+        },
+        stamina: {
+          current: 180,
+          lastUpdated: now,
+          cycleId: 'init_' + now, // 通知の重複発火防止用ID
+        },
+        profile: {
+          coins: 50,
+          qp: 0,
+        },
+        streak: {
+          current: 0,
+          longest: 0,
+          lastClaimDate: null,
+        },
+        celebratedTodayDate: null, // 今日の目標達成お祝いトーストを1日1回だけ出す
+        quests: [
+          { id: 'q_study', title: '勉強・学習 (30分)', category: 'duty', cost: 30, qpReward: 30, coinReward: 30 },
+          { id: 'q_admin', title: '手続き・事務作業 (20分)', category: 'duty', cost: 20, qpReward: 25, coinReward: 25 },
+          { id: 'q_read',  title: '読書・インプット (30分)', category: 'duty', cost: 30, qpReward: 30, coinReward: 30 },
+          { id: 'q_game',  title: 'ゲーム (30分)', category: 'play', cost: 30, qpReward: 0, coinReward: 0 },
+          { id: 'q_video', title: '動画視聴 (30分)', category: 'play', cost: 30, qpReward: 0, coinReward: 0 },
+        ],
+        todos: [
+          { id: 't_1', title: '役所・手続き書類の確認', category: 'duty', cost: 20, coinReward: 25, dueDate: '', completed: false, completedAt: null, logId: null },
+          { id: 't_2', title: '部屋の片付け・デスク整理', category: 'duty', cost: 30, coinReward: 35, dueDate: '', completed: false, completedAt: null, logId: null },
+          { id: 't_3', title: '気になっていた映画を1本観る', category: 'play', cost: 45, coinReward: 0, dueDate: '', completed: false, completedAt: null, logId: null },
+        ],
+        missions: [
+          // デイリー
+          { id: 'm_d1', period: 'daily', title: '今日「やるべきこと」を60 ST以上消費', metric: 'duty_stamina', target: 60, coinReward: 35, claimedPeriodKey: null },
+          { id: 'm_d2', period: 'daily', title: '「遊び」と「やるべきこと」を両方楽しむ', metric: 'both_categories', target: 1, coinReward: 30, claimedPeriodKey: null },
+          // ウィークリー
+          { id: 'm_w1', period: 'weekly', title: '今週「やるべきこと」を400 ST以上消費', metric: 'duty_stamina', target: 400, coinReward: 200, claimedPeriodKey: null },
+          { id: 'm_w2', period: 'weekly', title: '単発ToDoを今週3件完了する', metric: 'todo_count', target: 3, coinReward: 120, claimedPeriodKey: null },
+          // マンスリー
+          { id: 'm_m1', period: 'monthly', title: '今月「やるべきこと」を1500 ST以上消費', metric: 'duty_stamina', target: 1500, coinReward: 650, claimedPeriodKey: null },
+          { id: 'm_m2', period: 'monthly', title: '今月デイリーミッションを15回達成', metric: 'daily_claims', target: 15, coinReward: 450, claimedPeriodKey: null },
+        ],
+        rewards: [
+          { id: 'r_sweet',  title: '好きなお菓子を買う', description: '罪悪感ゼロで楽しむおやつタイム', cost: 100 },
+          { id: 'r_coffee', title: 'カフェでコーヒーを飲む', description: '勉強や手続きを頑張ったご褒美', cost: 160 },
+          { id: 'r_gacha',  title: 'ゲーム課金 300円分', description: '目標達成の自分へのご褒美予算', cost: 350 },
+        ],
+        logs: [],
+        claimHistory: [],
+      };
+    }
+
+    let state = loadState();
+    let currentTab = 'home';
+    let currentHomeSubTab = 'quests';
+    let currentMissionPeriod = 'daily';
+    let showCompletedTodos = true;
+    let confirmCallback = null;
+    let activeInAppAlerts = []; // { id, type, title, body }
+
+    // -------------------------------------------------------------------------
+    // 永続化 (localStorage)
+    // -------------------------------------------------------------------------
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return createDefaultState();
+        const parsed = JSON.parse(raw);
+        const def = createDefaultState();
+        return {
+          ...def,
+          ...parsed,
+          settings: { ...def.settings, ...(parsed.settings || {}) },
+          notifications: {
+            ...def.notifications,
+            ...(parsed.notifications || {}),
+            sentFlags: { ...def.notifications.sentFlags, ...((parsed.notifications && parsed.notifications.sentFlags) || {}) }
+          },
+          stamina: { ...def.stamina, ...(parsed.stamina || {}) },
+          profile: { ...def.profile, ...(parsed.profile || {}) },
+          streak: { ...def.streak, ...(parsed.streak || {}) },
+          quests: Array.isArray(parsed.quests) ? parsed.quests : def.quests,
+          todos: Array.isArray(parsed.todos) ? parsed.todos : def.todos,
+          missions: Array.isArray(parsed.missions) ? parsed.missions : def.missions,
+          rewards: Array.isArray(parsed.rewards) ? parsed.rewards : def.rewards,
+          logs: Array.isArray(parsed.logs) ? parsed.logs : [],
+          claimHistory: Array.isArray(parsed.claimHistory) ? parsed.claimHistory : [],
+        };
+      } catch (e) {
+        console.error('loadState error:', e);
+        return createDefaultState();
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error('saveState error:', e);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 日付・期間キー計算ヘルパー
+    // -------------------------------------------------------------------------
+    function getDateKey(date = new Date()) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function getYesterdayKey() {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      return getDateKey(d);
+    }
+
+    function getMondayOfWeek(date = new Date()) {
+      const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const day = d.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      d.setDate(d.getDate() + diff);
+      return d;
+    }
+
+    function getWeekKey(date = new Date()) {
+      return `W_${getDateKey(getMondayOfWeek(date))}`;
+    }
+
+    function getMonthKey(date = new Date()) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function getCurrentPeriodKey(period) {
+      if (period === 'daily') return getDateKey();
+      if (period === 'weekly') return getWeekKey();
+      return getMonthKey();
+    }
+
+    // -------------------------------------------------------------------------
+    // Web Audio API 効果音
+    // -------------------------------------------------------------------------
+    let audioCtx = null;
+    function playSound(type) {
+      if (!state.settings.soundEnabled) return;
+      try {
+        if (!audioCtx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AC();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'duty') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.setValueAtTime(659.25, now + 0.08);
+          osc.frequency.setValueAtTime(783.99, now + 0.16);
+          gain.gain.setValueAtTime(0.13, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
+          osc.start(now); osc.stop(now + 0.35);
+        } else if (type === 'play') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.exponentialRampToValueAtTime(660, now + 0.13);
+          gain.gain.setValueAtTime(0.11, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+          osc.start(now); osc.stop(now + 0.23);
+        } else if (type === 'coin') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(987.77, now);
+          osc.frequency.setValueAtTime(1318.51, now + 0.07);
+          gain.gain.setValueAtTime(0.14, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+          osc.start(now); osc.stop(now + 0.33);
+        } else if (type === 'error') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(175, now);
+          osc.frequency.setValueAtTime(135, now + 0.08);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+          osc.start(now); osc.stop(now + 0.21);
+        }
+      } catch (e) {}
+    }
+
+    // -------------------------------------------------------------------------
+    // スタミナ自動回復 & 満タン予定時刻
+    // -------------------------------------------------------------------------
+    function updateStaminaRegen() {
+      const now = Date.now();
+      const maxSt = state.settings.maxStamina;
+      const intervalMs = state.settings.regenIntervalMinutes * 60 * 1000;
+
+      if (state.stamina.current >= maxSt) {
+        state.stamina.lastUpdated = now;
+        return { nextRegenMs: 0, fullRegenMs: 0 };
+      }
+
+      const elapsed = Math.max(0, now - state.stamina.lastUpdated);
+      const gained = Math.floor(elapsed / intervalMs);
+
+      if (gained > 0) {
+        const nextVal = Math.min(maxSt, state.stamina.current + gained);
+        state.stamina.current = nextVal;
+        if (nextVal >= maxSt) {
+          state.stamina.lastUpdated = now;
+        } else {
+          state.stamina.lastUpdated += gained * intervalMs;
+        }
+        saveState();
+      }
+
+      if (state.stamina.current >= maxSt) {
+        return { nextRegenMs: 0, fullRegenMs: 0 };
+      }
+
+      const remainder = Math.max(0, now - state.stamina.lastUpdated);
+      const nextRegenMs = Math.max(0, intervalMs - remainder);
+      const missingAfterNext = Math.max(0, maxSt - state.stamina.current - 1);
+      const fullRegenMs = nextRegenMs + missingAfterNext * intervalMs;
+      return { nextRegenMs, fullRegenMs };
+    }
+
+    function formatMMSS(ms) {
+      if (ms <= 0) return '00:00';
+      const sec = Math.ceil(ms / 1000);
+      return `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+    }
+
+    function formatETA(fullRegenMs) {
+      if (fullRegenMs <= 0) return '満タン';
+      const eta = new Date(Date.now() + fullRegenMs);
+      const todayKey = getDateKey();
+      const etaKey = getDateKey(eta);
+      const hhmm = `${String(eta.getHours()).padStart(2, '0')}:${String(eta.getMinutes()).padStart(2, '0')}`;
+      return etaKey === todayKey ? `${hhmm}頃` : `明日 ${hhmm}頃`;
+    }
+
+    // -------------------------------------------------------------------------
+    // 通知エンジン（Web Notification API ＋ アプリ内アラート）
+    // -------------------------------------------------------------------------
+    function sendAppNotification(id, title, body, alertType = 'warning') {
+      // アプリ内アラートに追加（同一ID重複回避）
+      if (!activeInAppAlerts.some(a => a.id === id)) {
+        activeInAppAlerts.unshift({ id, type: alertType, title, body });
+        renderInAppAlerts();
+      }
+      showToast(`${title} ${body}`, alertType === 'danger' ? 'warning' : 'gold');
+
+      // ブラウザ通知（許可済みかつONの場合）
+      if (state.notifications.enabled && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification(title, { body });
+        } catch (e) {
+          // iFrame等で制限される場合はアプリ内通知のみで継続
+        }
+      }
+    }
+
+    function dismissInAppAlert(id) {
+      activeInAppAlerts = activeInAppAlerts.filter(a => a.id !== id);
+      renderInAppAlerts();
+    }
+
+    function renderInAppAlerts() {
+      const container = document.getElementById('in-app-alerts');
+      if (!activeInAppAlerts.length) {
+        container.innerHTML = '';
+        return;
+      }
+      container.innerHTML = activeInAppAlerts.map(a => {
+        const cls = a.type === 'danger'
+          ? 'bg-rose-950/90 border-rose-500/50 text-rose-100'
+          : 'bg-amber-950/90 border-amber-500/50 text-amber-100';
+        return `
+          <div class="rounded-2xl border px-4 py-3 flex items-start justify-between gap-3 shadow-lg animate-pop ${cls}">
+            <div class="space-y-0.5">
+              <p class="text-xs sm:text-sm font-extrabold">${escapeHTML(a.title)}</p>
+              <p class="text-xs opacity-90">${escapeHTML(a.body)}</p>
+            </div>
+            <button onclick="dismissInAppAlert('${a.id}')" class="p-1 rounded-lg hover:bg-white/10 shrink-0">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function checkNotifications(fullRegenMs) {
+      if (!state.notifications.enabled) return;
+
+      const cur = state.stamina.current;
+      const max = state.settings.maxStamina;
+      const cycleId = state.stamina.cycleId;
+
+      // 1. スタミナ満タン（溢れ）通知
+      if (cur >= max && state.notifications.sentFlags.fullCycleId !== cycleId) {
+        state.notifications.sentFlags.fullCycleId = cycleId;
+        saveState();
+        sendAppNotification(
+          'notif_full_' + cycleId,
+          '⚠️ スタミナが満タンになりました！',
+          '可処分時間が溢れています。勉強や手続き、または遊びクエストで消費しましょう！',
+          'warning'
+        );
+      }
+
+      // 2. スタミナ満タンまで残り○分通知
+      const preMs = state.notifications.preFullMinutes * 60 * 1000;
+      if (cur < max && fullRegenMs > 0 && fullRegenMs <= preMs && state.notifications.sentFlags.preFullCycleId !== cycleId) {
+        state.notifications.sentFlags.preFullCycleId = cycleId;
+        saveState();
+        sendAppNotification(
+          'notif_prefull_' + cycleId,
+          `⏰ スタミナ満タンまで残り約${state.notifications.preFullMinutes}分です`,
+          '溢れる前にちょっとしたタスクを消化しておきましょう！',
+          'warning'
+        );
+      }
+
+      // 3. 連続ログイン記録途切れ警告
+      const todayKey = getDateKey();
+      if (state.notifications.sentFlags.streakWarnDate !== todayKey) {
+        const [warnH, warnM] = (state.notifications.streakWarnTime || '21:00').split(':').map(Number);
+        const now = new Date();
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        const warnMin = (warnH || 21) * 60 + (warnM || 0);
+
+        const todayStats = getStatsForDate(todayKey);
+        const loginNotClaimed = state.streak.lastClaimDate !== todayKey;
+        const dutyZero = todayStats.dutySt === 0;
+
+        if (nowMin >= warnMin && (loginNotClaimed || dutyZero)) {
+          state.notifications.sentFlags.streakWarnDate = todayKey;
+          saveState();
+          sendAppNotification(
+            'notif_streak_' + todayKey,
+            '⚠️ 連続ログイン記録が途切れそうです！',
+            loginNotClaimed
+              ? '今日のログインボーナスをまだ受け取っていません。今すぐスタンプを押しましょう！'
+              : '今日の「やるべきこと」がまだ0 STです。少しだけでも進めて記録を守りましょう！',
+            'danger'
+          );
+        }
+      }
+    }
+
+    async function requestNotificationPermission() {
+      if (!('Notification' in window)) {
+        showToast('このブラウザはWeb通知に対応していません（アプリ内通知は利用可能です）', 'warning');
+        return;
+      }
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') {
+          state.notifications.enabled = true;
+          saveState();
+          showToast('ブラウザ通知が許可され、通知をONにしました！', 'success');
+        } else {
+          showToast('ブラウザ通知は許可されませんでした（アプリ内通知は引き続き利用可能です）', 'info');
+        }
+        renderAll();
+        updateSettingsModalUI();
+      } catch (e) {
+        showToast('通知許可のリクエストに失敗しました', 'error');
+      }
+    }
+
+    function toggleNotificationEnabled() {
+      state.notifications.enabled = !state.notifications.enabled;
+      saveState();
+      updateSettingsModalUI();
+      renderHeader();
+      showToast(state.notifications.enabled ? '通知をONにしました' : '通知をOFFにしました', 'info');
+    }
+
+    function toggleNotificationQuick() {
+      if (!state.notifications.enabled && 'Notification' in window && Notification.permission === 'default') {
+        requestNotificationPermission();
+      } else {
+        toggleNotificationEnabled();
+      }
+    }
+
+    function testOverflowNotification() {
+      sendAppNotification(
+        'test_full_' + Date.now(),
+        '⚠️ 【テスト】スタミナが溢れています！',
+        '可処分時間が満タンです。クエストや単発ToDoをこなして消費しましょう！',
+        'warning'
+      );
+    }
+
+    function testStreakWarnNotification() {
+      sendAppNotification(
+        'test_streak_' + Date.now(),
+        '⚠️ 【テスト】連続ログイン記録が途切れそうです！',
+        '本日中にログインボーナス受取＆「やるべきこと」を消化してストリークを守りましょう！',
+        'danger'
+      );
+    }
+
+    // -------------------------------------------------------------------------
+    // 連続ログインボーナス（7日間サイクル）
+    // -------------------------------------------------------------------------
+    function getEffectiveStreak() {
+      const todayKey = getDateKey();
+      const yestKey = getYesterdayKey();
+      if (state.streak.lastClaimDate === todayKey || state.streak.lastClaimDate === yestKey) {
+        return state.streak.current;
+      }
+      return 0; // 昨日ログインしていなければ途切れ
+    }
+
+    function isTodayLoginClaimed() {
+      return state.streak.lastClaimDate === getDateKey();
+    }
+
+    function openLoginBonusModal() {
+      const effective = getEffectiveStreak();
+      const claimedToday = isTodayLoginClaimed();
+
+      document.getElementById('modal-streak-current').textContent = effective;
+      document.getElementById('modal-streak-longest').textContent = state.streak.longest;
+
+      // 現在のサイクル位置（1〜7）
+      const completedInCycle = claimedToday
+        ? ((effective - 1) % 7) + 1
+        : (effective % 7);
+      const nextDayIndex = claimedToday ? -1 : completedInCycle; // 0-based
+
+      const grid = document.getElementById('login-stamp-grid');
+      grid.innerHTML = LOGIN_REWARDS.map((coin, idx) => {
+        const dayNum = idx + 1;
+        const isStamped = idx < completedInCycle;
+        const isTodayTarget = idx === nextDayIndex;
+        const isDay7 = dayNum === 7;
+
+        let cardCls = 'bg-slate-950/70 border-slate-800 text-slate-400';
+        if (isStamped) cardCls = 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200';
+        else if (isTodayTarget) cardCls = 'bg-amber-500/20 border-amber-400 text-amber-100 ring-2 ring-amber-400/50 animate-pulse-slow';
+
+        return `
+          <div class="${isDay7 ? 'col-span-2' : ''} rounded-xl border p-2.5 flex flex-col items-center justify-center text-center gap-1 ${cardCls}">
+            <span class="text-[10px] font-extrabold">${dayNum}日目${isDay7 ? ' 👑BIG' : ''}</span>
+            <span class="text-lg leading-none">${isStamped ? '✅' : isDay7 ? '🎁' : '🪙'}</span>
+            <span class="text-xs font-black text-amber-300">+${coin}C</span>
+          </div>
+        `;
+      }).join('');
+
+      const actionArea = document.getElementById('login-bonus-action-area');
+      if (claimedToday) {
+        actionArea.innerHTML = `
+          <div class="w-full py-2.5 rounded-xl bg-slate-800 text-emerald-300 text-xs font-extrabold text-center">
+            ✅ 本日のログインボーナスは受取済みです！明日もお待ちしています
+          </div>
+        `;
+      } else {
+        const reward = LOGIN_REWARDS[nextDayIndex];
+        actionArea.innerHTML = `
+          <button onclick="claimLoginBonus()" class="w-full py-3 rounded-xl bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-300 hover:from-amber-300 hover:to-yellow-200 text-slate-950 text-sm font-black shadow-lg shadow-amber-500/30 active:scale-95 transition">
+            🎉 今日のログインボーナス (+${reward} コイン) を受け取る
+          </button>
+        `;
+      }
+
+      const modal = document.getElementById('modal-login-bonus');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function claimLoginBonus() {
+      if (isTodayLoginClaimed()) return;
+      const todayKey = getDateKey();
+      const yestKey = getYesterdayKey();
+
+      const nextStreak = (state.streak.lastClaimDate === yestKey) ? state.streak.current + 1 : 1;
+      state.streak.current = nextStreak;
+      state.streak.longest = Math.max(state.streak.longest, nextStreak);
+      state.streak.lastClaimDate = todayKey;
+
+      const reward = LOGIN_REWARDS[(nextStreak - 1) % 7];
+      state.profile.coins += reward;
+      saveState();
+
+      playSound('coin');
+      spawnConfetti();
+      showToast(`🔥 ${nextStreak}日連続ログイン達成！ +${reward} コイン獲得！`, 'gold');
+      renderAll();
+      openLoginBonusModal(); // スタンプ押下後の状態に更新
+    }
+
+    function resetTodayLoginClaim() {
+      state.streak.lastClaimDate = null;
+      saveState();
+      renderAll();
+      showToast('今日のログイン受取状態をリセットしました', 'info');
+    }
+
+    // -------------------------------------------------------------------------
+    // 集計エンジン（今日・今週・今月・日付別）
+    // -------------------------------------------------------------------------
+    function getStatsForDate(dateKey) {
+      const logs = state.logs.filter(l => (l.type === 'quest' || l.type === 'todo') && l.dateKey === dateKey);
+      const dutySt = logs.filter(l => l.category === 'duty').reduce((s, l) => s + l.cost, 0);
+      const playSt = logs.filter(l => l.category === 'play').reduce((s, l) => s + l.cost, 0);
+      const totalSt = dutySt + playSt;
+      const achieved = dutySt >= state.settings.dailyDutyGoal && totalSt >= state.settings.dailyTotalGoal;
+      return { dutySt, playSt, totalSt, achieved };
+    }
+
+    function getStatsForPeriod(period) {
+      const key = getCurrentPeriodKey(period);
+      const logs = state.logs.filter(l => {
+        if (l.type !== 'quest' && l.type !== 'todo') return false;
+        if (period === 'daily') return l.dateKey === key;
+        if (period === 'weekly') return l.weekKey === key;
+        return l.monthKey === key;
+      });
+      const dutySt = logs.filter(l => l.category === 'duty').reduce((s, l) => s + l.cost, 0);
+      const playSt = logs.filter(l => l.category === 'play').reduce((s, l) => s + l.cost, 0);
+      return { dutySt, playSt, totalSt: dutySt + playSt, logs };
+    }
+
+    function checkAndCelebrateTodayGoal() {
+      const todayKey = getDateKey();
+      const stats = getStatsForDate(todayKey);
+      if (stats.achieved && state.celebratedTodayDate !== todayKey) {
+        state.celebratedTodayDate = todayKey;
+        saveState();
+        spawnConfetti();
+        playSound('coin');
+        showToast('🎉 おめでとうございます！今日の目標リングを両方達成しました！', 'gold');
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 繰り返しクエスト実行・CRUD
+    // -------------------------------------------------------------------------
+    function consumeStaminaCore(cost) {
+      updateStaminaRegen();
+      if (state.stamina.current < cost) {
+        playSound('error');
+        showToast('スタミナ不足です！やりすぎ防止のため回復を待ちましょう。', 'warning');
+        return false;
+      }
+      const wasFull = state.stamina.current >= state.settings.maxStamina;
+      state.stamina.current -= cost;
+      if (wasFull && state.stamina.current < state.settings.maxStamina) {
+        state.stamina.lastUpdated = Date.now();
+        // 新しい回復サイクルIDを発行（満タン・残り15分通知が再度機能するように）
+        state.stamina.cycleId = 'cyc_' + Date.now();
+      }
+      return true;
+    }
+
+    function executeQuest(questId, event) {
+      const q = state.quests.find(item => item.id === questId);
+      if (!q) return;
+      if (!consumeStaminaCore(q.cost)) return;
+
+      const prevLv = calcLevel(state.profile.qp).level;
+      state.profile.qp += q.qpReward;
+      state.profile.coins += q.coinReward;
+      const newLv = calcLevel(state.profile.qp).level;
+
+      const now = new Date();
+      state.logs.unshift({
+        id: 'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+        type: 'quest',
+        timestamp: now.getTime(),
+        dateKey: getDateKey(now),
+        weekKey: getWeekKey(now),
+        monthKey: getMonthKey(now),
+        title: q.title,
+        category: q.category,
+        cost: q.cost,
+        qpEarned: q.qpReward,
+        coinDelta: q.coinReward,
+      });
+
+      saveState();
+
+      if (q.category === 'duty') {
+        playSound('duty');
+        spawnFloatingText(event, `-${q.cost} ST  +${q.coinReward}C`, 'text-emerald-300');
+        showToast(`「${q.title}」クリア！ +${q.coinReward} コイン`, 'success');
+      } else {
+        playSound('play');
+        spawnFloatingText(event, `-${q.cost} ST リフレッシュ`, 'text-purple-300');
+        showToast(`「${q.title}」を実行（-${q.cost} ST）。楽しく息抜きしましょう！`, 'info');
+      }
+
+      if (newLv > prevLv) {
+        spawnConfetti();
+        showToast(`✨ レベルアップ！ Lv.${newLv} になりました！`, 'gold');
+      }
+
+      checkAndCelebrateTodayGoal();
+      renderAll();
+    }
+
+    function openQuestModal(questId = null) {
+      const modal = document.getElementById('modal-quest');
+      if (questId) {
+        const q = state.quests.find(i => i.id === questId);
+        if (!q) return;
+        document.getElementById('modal-quest-title').textContent = '繰り返しクエストを編集';
+        document.getElementById('quest-id').value = q.id;
+        document.getElementById('quest-name').value = q.title;
+        document.getElementById('quest-category').value = q.category;
+        document.getElementById('quest-cost').value = q.cost;
+        document.getElementById('quest-qp').value = q.qpReward;
+        document.getElementById('quest-coin').value = q.coinReward;
+      } else {
+        document.getElementById('modal-quest-title').textContent = '繰り返しクエストを追加';
+        document.getElementById('quest-id').value = '';
+        document.getElementById('quest-name').value = '';
+        document.getElementById('quest-category').value = 'duty';
+        document.getElementById('quest-cost').value = 30;
+        document.getElementById('quest-qp').value = 30;
+        document.getElementById('quest-coin').value = 30;
+      }
+      onQuestCategoryChange();
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function onQuestCategoryChange() {
+      const cat = document.getElementById('quest-category').value;
+      const box = document.getElementById('quest-reward-fields');
+      if (cat === 'play') {
+        box.classList.add('opacity-50');
+        document.getElementById('quest-qp').value = 0;
+        document.getElementById('quest-coin').value = 0;
+      } else {
+        box.classList.remove('opacity-50');
+        if (Number(document.getElementById('quest-qp').value) === 0) autoCalcQuestRewards();
+      }
+    }
+
+    function autoCalcQuestRewards() {
+      if (document.getElementById('quest-category').value !== 'duty') return;
+      const cost = Math.max(0, Number(document.getElementById('quest-cost').value) || 0);
+      document.getElementById('quest-qp').value = cost;
+      document.getElementById('quest-coin').value = cost;
+    }
+
+    function saveQuest(e) {
+      e.preventDefault();
+      const id = document.getElementById('quest-id').value;
+      const title = document.getElementById('quest-name').value.trim();
+      const category = document.getElementById('quest-category').value;
+      const cost = Math.max(1, parseInt(document.getElementById('quest-cost').value, 10) || 15);
+      const qpReward = category === 'duty' ? Math.max(0, parseInt(document.getElementById('quest-qp').value, 10) || 0) : 0;
+      const coinReward = category === 'duty' ? Math.max(0, parseInt(document.getElementById('quest-coin').value, 10) || 0) : 0;
+      if (!title) return;
+
+      if (id) {
+        const idx = state.quests.findIndex(q => q.id === id);
+        if (idx !== -1) state.quests[idx] = { ...state.quests[idx], title, category, cost, qpReward, coinReward };
+        showToast('クエストを更新しました', 'success');
+      } else {
+        state.quests.push({ id: 'q_' + Date.now(), title, category, cost, qpReward, coinReward });
+        showToast('繰り返しクエストを追加しました', 'success');
+      }
+      saveState();
+      closeModal('modal-quest');
+      renderAll();
+    }
+
+    function deleteQuest(questId) {
+      const q = state.quests.find(i => i.id === questId);
+      if (!q) return;
+      openConfirm('クエストの削除', `「${q.title}」を削除してもよろしいですか？`, () => {
+        state.quests = state.quests.filter(i => i.id !== questId);
+        saveState();
+        renderAll();
+        showToast('クエストを削除しました', 'info');
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // 単発ToDo（1回だけのタスク）完了・元に戻す・CRUD
+    // -------------------------------------------------------------------------
+    function completeTodo(todoId, event) {
+      const t = state.todos.find(i => i.id === todoId);
+      if (!t || t.completed) return;
+      if (!consumeStaminaCore(t.cost)) return;
+
+      const qpEarned = t.category === 'duty' ? t.cost : 0;
+      state.profile.qp += qpEarned;
+      state.profile.coins += t.coinReward;
+
+      const now = new Date();
+      const logId = 'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
+      t.completed = true;
+      t.completedAt = now.getTime();
+      t.logId = logId;
+
+      state.logs.unshift({
+        id: logId,
+        type: 'todo',
+        todoId: t.id,
+        timestamp: now.getTime(),
+        dateKey: getDateKey(now),
+        weekKey: getWeekKey(now),
+        monthKey: getMonthKey(now),
+        title: `[ToDo] ${t.title}`,
+        category: t.category,
+        cost: t.cost,
+        qpEarned,
+        coinDelta: t.coinReward,
+      });
+
+      saveState();
+      playSound(t.category === 'duty' ? 'duty' : 'play');
+      spawnFloatingText(event, `完了! -${t.cost}ST +${t.coinReward}C`, 'text-emerald-300');
+      showToast(`✅ 単発ToDo「${t.title}」を完了しました！`, 'success');
+      checkAndCelebrateTodayGoal();
+      renderAll();
+    }
+
+    function uncompleteTodo(todoId) {
+      const t = state.todos.find(i => i.id === todoId);
+      if (!t || !t.completed) return;
+      // 紐づくログを取り消し処理に委譲
+      if (t.logId && state.logs.some(l => l.id === t.logId)) {
+        undoLogCore(t.logId);
+      } else {
+        t.completed = false;
+        t.completedAt = null;
+        t.logId = null;
+        saveState();
+        renderAll();
+      }
+      showToast(`「${t.title}」を未完了に戻しました`, 'info');
+    }
+
+    function openTodoModal(todoId = null) {
+      const modal = document.getElementById('modal-todo');
+      if (todoId) {
+        const t = state.todos.find(i => i.id === todoId);
+        if (!t) return;
+        document.getElementById('modal-todo-title').textContent = '単発ToDoを編集';
+        document.getElementById('todo-id').value = t.id;
+        document.getElementById('todo-name').value = t.title;
+        document.getElementById('todo-category').value = t.category;
+        document.getElementById('todo-cost').value = t.cost;
+        document.getElementById('todo-coin').value = t.coinReward;
+        document.getElementById('todo-due').value = t.dueDate || '';
+      } else {
+        document.getElementById('modal-todo-title').textContent = '単発ToDoを追加';
+        document.getElementById('todo-id').value = '';
+        document.getElementById('todo-name').value = '';
+        document.getElementById('todo-category').value = 'duty';
+        document.getElementById('todo-cost').value = 20;
+        document.getElementById('todo-coin').value = 25;
+        document.getElementById('todo-due').value = '';
+      }
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function onTodoCategoryChange() {
+      const cat = document.getElementById('todo-category').value;
+      if (cat === 'play') document.getElementById('todo-coin').value = 0;
+      else autoCalcTodoCoin();
+    }
+
+    function autoCalcTodoCoin() {
+      if (document.getElementById('todo-category').value !== 'duty') return;
+      const cost = Math.max(0, Number(document.getElementById('todo-cost').value) || 0);
+      document.getElementById('todo-coin').value = Math.round(cost * 1.2);
+    }
+
+    function saveTodo(e) {
+      e.preventDefault();
+      const id = document.getElementById('todo-id').value;
+      const title = document.getElementById('todo-name').value.trim();
+      const category = document.getElementById('todo-category').value;
+      const cost = Math.max(1, parseInt(document.getElementById('todo-cost').value, 10) || 20);
+      const coinReward = category === 'duty' ? Math.max(0, parseInt(document.getElementById('todo-coin').value, 10) || 0) : 0;
+      const dueDate = document.getElementById('todo-due').value || '';
+      if (!title) return;
+
+      if (id) {
+        const idx = state.todos.findIndex(t => t.id === id);
+        if (idx !== -1) state.todos[idx] = { ...state.todos[idx], title, category, cost, coinReward, dueDate };
+        showToast('単発ToDoを更新しました', 'success');
+      } else {
+        state.todos.unshift({
+          id: 't_' + Date.now(),
+          title, category, cost, coinReward, dueDate,
+          completed: false, completedAt: null, logId: null
+        });
+        showToast('単発ToDoを追加しました', 'success');
+      }
+      saveState();
+      closeModal('modal-todo');
+      renderAll();
+    }
+
+    function deleteTodo(todoId) {
+      const t = state.todos.find(i => i.id === todoId);
+      if (!t) return;
+      openConfirm('単発ToDoの削除', `「${t.title}」を削除してもよろしいですか？`, () => {
+        state.todos = state.todos.filter(i => i.id !== todoId);
+        saveState();
+        renderAll();
+        showToast('単発ToDoを削除しました', 'info');
+      });
+    }
+
+    function toggleCompletedTodos() {
+      showCompletedTodos = !showCompletedTodos;
+      document.getElementById('todo-list-completed').classList.toggle('hidden', !showCompletedTodos);
+      document.getElementById('todo-done-chevron').style.transform = showCompletedTodos ? 'rotate(0deg)' : 'rotate(-90deg)';
+    }
+
+    // -------------------------------------------------------------------------
+    // ミッション進捗・報酬受取・CRUD
+    // -------------------------------------------------------------------------
+    function calcMissionProgress(mission) {
+      const periodKey = getCurrentPeriodKey(mission.period);
+      const periodLogs = state.logs.filter(l => {
+        if (l.type !== 'quest' && l.type !== 'todo') return false;
+        if (mission.period === 'daily') return l.dateKey === periodKey;
+        if (mission.period === 'weekly') return l.weekKey === periodKey;
+        return l.monthKey === periodKey;
+      });
+
+      let current = 0;
+      switch (mission.metric) {
+        case 'duty_stamina':
+          current = periodLogs.filter(l => l.category === 'duty').reduce((s, l) => s + l.cost, 0);
+          break;
+        case 'total_stamina':
+          current = periodLogs.reduce((s, l) => s + l.cost, 0);
+          break;
+        case 'duty_count':
+          current = periodLogs.filter(l => l.category === 'duty').length;
+          break;
+        case 'todo_count':
+          current = periodLogs.filter(l => l.type === 'todo').length;
+          break;
+        case 'both_categories': {
+          const hasDuty = periodLogs.some(l => l.category === 'duty');
+          const hasPlay = periodLogs.some(l => l.category === 'play');
+          current = (hasDuty && hasPlay) ? 1 : 0;
+          break;
+        }
+        case 'daily_claims': {
+          current = state.claimHistory.filter(c => {
+            if (c.period !== 'daily') return false;
+            const d = new Date(c.timestamp);
+            if (mission.period === 'weekly') return getWeekKey(d) === periodKey;
+            if (mission.period === 'monthly') return getMonthKey(d) === periodKey;
+            return getDateKey(d) === periodKey;
+          }).length;
+          break;
+        }
+      }
+
+      const isClaimed = mission.claimedPeriodKey === periodKey;
+      const isCompleted = current >= mission.target;
+      return { current, target: mission.target, isCompleted, isClaimed, periodKey };
+    }
+
+    function claimMission(missionId, event) {
+      const m = state.missions.find(i => i.id === missionId);
+      if (!m) return;
+      const prog = calcMissionProgress(m);
+      if (!prog.isCompleted || prog.isClaimed) return;
+
+      m.claimedPeriodKey = prog.periodKey;
+      state.profile.coins += m.coinReward;
+      state.profile.qp += Math.round(m.coinReward / 2);
+      state.claimHistory.push({ period: m.period, periodKey: prog.periodKey, missionId: m.id, timestamp: Date.now() });
+
+      saveState();
+      playSound('coin');
+      spawnConfetti();
+      spawnFloatingText(event, `+${m.coinReward} Coin!`, 'text-amber-300');
+      showToast(`🏆 ボーナス獲得！「${m.title}」で +${m.coinReward} コイン`, 'gold');
+      renderAll();
+    }
+
+    function openMissionModal(missionId = null) {
+      const modal = document.getElementById('modal-mission');
+      if (missionId) {
+        const m = state.missions.find(i => i.id === missionId);
+        if (!m) return;
+        document.getElementById('modal-mission-title').textContent = '目標ミッションを編集';
+        document.getElementById('mission-id').value = m.id;
+        document.getElementById('mission-name').value = m.title;
+        document.getElementById('mission-period').value = m.period;
+        document.getElementById('mission-metric').value = m.metric;
+        document.getElementById('mission-target').value = m.target;
+        document.getElementById('mission-coin').value = m.coinReward;
+      } else {
+        document.getElementById('modal-mission-title').textContent = '目標ミッションを追加';
+        document.getElementById('mission-id').value = '';
+        document.getElementById('mission-name').value = '';
+        document.getElementById('mission-period').value = currentMissionPeriod;
+        document.getElementById('mission-metric').value = 'duty_stamina';
+        document.getElementById('mission-target').value = currentMissionPeriod === 'daily' ? 60 : currentMissionPeriod === 'weekly' ? 400 : 1500;
+        document.getElementById('mission-coin').value = currentMissionPeriod === 'daily' ? 35 : currentMissionPeriod === 'weekly' ? 200 : 600;
+      }
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function saveMission(e) {
+      e.preventDefault();
+      const id = document.getElementById('mission-id').value;
+      const title = document.getElementById('mission-name').value.trim();
+      const period = document.getElementById('mission-period').value;
+      const metric = document.getElementById('mission-metric').value;
+      const target = Math.max(1, parseInt(document.getElementById('mission-target').value, 10) || 1);
+      const coinReward = Math.max(1, parseInt(document.getElementById('mission-coin').value, 10) || 10);
+      if (!title) return;
+
+      if (id) {
+        const idx = state.missions.findIndex(m => m.id === id);
+        if (idx !== -1) state.missions[idx] = { ...state.missions[idx], title, period, metric, target, coinReward };
+      } else {
+        state.missions.push({ id: 'm_' + Date.now(), period, title, metric, target, coinReward, claimedPeriodKey: null });
+        currentMissionPeriod = period;
+      }
+      saveState();
+      closeModal('modal-mission');
+      renderAll();
+      showToast('目標ミッションを保存しました', 'success');
+    }
+
+    function deleteMission(missionId) {
+      const m = state.missions.find(i => i.id === missionId);
+      if (!m) return;
+      openConfirm('ミッション削除', `「${m.title}」を削除しますか？`, () => {
+        state.missions = state.missions.filter(i => i.id !== missionId);
+        saveState();
+        renderAll();
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // ご褒美ショップ
+    // -------------------------------------------------------------------------
+    function redeemReward(rewardId) {
+      const r = state.rewards.find(i => i.id === rewardId);
+      if (!r) return;
+      if (state.profile.coins < r.cost) {
+        playSound('error');
+        showToast(`コインが ${r.cost - state.profile.coins} 枚足りません！`, 'warning');
+        return;
+      }
+      openConfirm('ご褒美と交換', `「${r.title}」を ${r.cost} コインで交換しますか？`, () => {
+        state.profile.coins -= r.cost;
+        const now = new Date();
+        state.logs.unshift({
+          id: 'log_' + Date.now(),
+          type: 'reward',
+          timestamp: now.getTime(),
+          dateKey: getDateKey(now),
+          weekKey: getWeekKey(now),
+          monthKey: getMonthKey(now),
+          title: r.title,
+          cost: 0,
+          coinDelta: -r.cost,
+        });
+        saveState();
+        playSound('coin');
+        spawnConfetti();
+        showToast(`🎁 「${r.title}」を交換しました！存分に楽しんでください！`, 'gold');
+        renderAll();
+      }, '交換する', 'bg-pink-600 hover:bg-pink-500');
+    }
+
+    function openRewardModal(rewardId = null) {
+      const modal = document.getElementById('modal-reward');
+      if (rewardId) {
+        const r = state.rewards.find(i => i.id === rewardId);
+        if (!r) return;
+        document.getElementById('modal-reward-title').textContent = 'ご褒美を編集';
+        document.getElementById('reward-id').value = r.id;
+        document.getElementById('reward-name').value = r.title;
+        document.getElementById('reward-desc').value = r.description || '';
+        document.getElementById('reward-cost').value = r.cost;
+      } else {
+        document.getElementById('modal-reward-title').textContent = 'ご褒美を登録';
+        document.getElementById('reward-id').value = '';
+        document.getElementById('reward-name').value = '';
+        document.getElementById('reward-desc').value = '';
+        document.getElementById('reward-cost').value = 150;
+      }
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function saveReward(e) {
+      e.preventDefault();
+      const id = document.getElementById('reward-id').value;
+      const title = document.getElementById('reward-name').value.trim();
+      const description = document.getElementById('reward-desc').value.trim();
+      const cost = Math.max(1, parseInt(document.getElementById('reward-cost').value, 10) || 100);
+      if (!title) return;
+      if (id) {
+        const idx = state.rewards.findIndex(r => r.id === id);
+        if (idx !== -1) state.rewards[idx] = { ...state.rewards[idx], title, description, cost };
+      } else {
+        state.rewards.push({ id: 'r_' + Date.now(), title, description, cost });
+      }
+      saveState();
+      closeModal('modal-reward');
+      renderAll();
+      showToast('ご褒美を保存しました', 'success');
+    }
+
+    function deleteReward(rewardId) {
+      const r = state.rewards.find(i => i.id === rewardId);
+      if (!r) return;
+      openConfirm('ご褒美削除', `「${r.title}」を削除しますか？`, () => {
+        state.rewards = state.rewards.filter(i => i.id !== rewardId);
+        saveState();
+        renderAll();
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // ログの取り消し
+    // -------------------------------------------------------------------------
+    function undoLogCore(logId) {
+      const log = state.logs.find(l => l.id === logId);
+      if (!log) return;
+      if (log.type === 'quest' || log.type === 'todo') {
+        state.stamina.current = Math.min(state.settings.maxStamina, state.stamina.current + log.cost);
+        state.profile.qp = Math.max(0, state.profile.qp - (log.qpEarned || 0));
+        state.profile.coins = Math.max(0, state.profile.coins - (log.coinDelta || 0));
+        if (log.type === 'todo' && log.todoId) {
+          const t = state.todos.find(item => item.id === log.todoId);
+          if (t) { t.completed = false; t.completedAt = null; t.logId = null; }
+        }
+      } else if (log.type === 'reward') {
+        state.profile.coins += Math.abs(log.coinDelta || 0);
+      }
+      state.logs = state.logs.filter(l => l.id !== logId);
+      saveState();
+      renderAll();
+    }
+
+    function undoLog(logId) {
+      const log = state.logs.find(l => l.id === logId);
+      if (!log) return;
+      const msg = log.type === 'reward'
+        ? `「${log.title}」の交換を取り消し、${Math.abs(log.coinDelta)} コインを返還しますか？`
+        : `「${log.title}」を取り消し、${log.cost} ST を返還しますか？`;
+      openConfirm('履歴の取り消し', msg, () => {
+        undoLogCore(logId);
+        showToast('履歴を取り消しました', 'info');
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // 設定モーダル & JSONバックアップ
+    // -------------------------------------------------------------------------
+    function openSettingsModal() {
+      updateSettingsModalUI();
+      const modal = document.getElementById('modal-settings');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function updateSettingsModalUI() {
+      document.getElementById('set-max-stamina').value = state.settings.maxStamina;
+      document.getElementById('set-regen-min').value = state.settings.regenIntervalMinutes;
+      document.getElementById('set-daily-duty-goal').value = state.settings.dailyDutyGoal;
+      document.getElementById('set-daily-total-goal').value = state.settings.dailyTotalGoal;
+      document.getElementById('set-weekly-duty-goal').value = state.settings.weeklyDutyGoal;
+      document.getElementById('set-monthly-duty-goal').value = state.settings.monthlyDutyGoal;
+
+      document.getElementById('set-prefull-min').value = state.notifications.preFullMinutes;
+      document.getElementById('set-streak-warn-time').value = state.notifications.streakWarnTime;
+
+      const toggleBtn = document.getElementById('set-notif-toggle');
+      if (state.notifications.enabled) {
+        toggleBtn.textContent = 'ON';
+        toggleBtn.className = 'px-3 py-1.5 rounded-lg text-[11px] font-extrabold bg-emerald-500 text-slate-950 transition';
+      } else {
+        toggleBtn.textContent = 'OFF';
+        toggleBtn.className = 'px-3 py-1.5 rounded-lg text-[11px] font-extrabold bg-slate-800 text-slate-400 transition';
+      }
+
+      const permBadge = document.getElementById('notif-permission-badge');
+      if (!('Notification' in window)) {
+        permBadge.textContent = 'Web通知非対応';
+      } else if (Notification.permission === 'granted') {
+        permBadge.textContent = 'ブラウザ許可済';
+        permBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300';
+      } else if (Notification.permission === 'denied') {
+        permBadge.textContent = 'ブロック中';
+        permBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300';
+      } else {
+        permBadge.textContent = '未許可';
+        permBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300';
+      }
+    }
+
+    function saveCoreSettings() {
+      updateStaminaRegen();
+      state.settings.maxStamina = Math.max(10, Math.min(1440, parseInt(document.getElementById('set-max-stamina').value, 10) || 180));
+      state.settings.regenIntervalMinutes = Math.max(0.1, Math.min(120, parseFloat(document.getElementById('set-regen-min').value) || 8));
+      state.settings.dailyDutyGoal = Math.max(10, parseInt(document.getElementById('set-daily-duty-goal').value, 10) || 90);
+      state.settings.dailyTotalGoal = Math.max(10, parseInt(document.getElementById('set-daily-total-goal').value, 10) || 150);
+      state.settings.weeklyDutyGoal = Math.max(10, parseInt(document.getElementById('set-weekly-duty-goal').value, 10) || 450);
+      state.settings.monthlyDutyGoal = Math.max(10, parseInt(document.getElementById('set-monthly-duty-goal').value, 10) || 1800);
+      if (state.stamina.current > state.settings.maxStamina) state.stamina.current = state.settings.maxStamina;
+      saveState();
+      renderAll();
+      showToast('スタミナ＆目標設定を保存しました', 'success');
+    }
+
+    function saveNotificationSettings() {
+      state.notifications.preFullMinutes = Math.max(1, Math.min(120, parseInt(document.getElementById('set-prefull-min').value, 10) || 15));
+      state.notifications.streakWarnTime = document.getElementById('set-streak-warn-time').value || '21:00';
+      // 時刻変更時は当日分の警告フラグを解除して再評価できるようにする
+      state.notifications.sentFlags.streakWarnDate = null;
+      saveState();
+      showToast('通知タイミングを保存しました', 'success');
+    }
+
+    function adjustStamina(delta) {
+      updateStaminaRegen();
+      const maxSt = state.settings.maxStamina;
+      const wasFull = state.stamina.current >= maxSt;
+      const next = Math.max(0, Math.min(maxSt, state.stamina.current + delta));
+      state.stamina.current = next;
+      if (wasFull && next < maxSt) {
+        state.stamina.lastUpdated = Date.now();
+        state.stamina.cycleId = 'cyc_' + Date.now();
+      }
+      saveState();
+      renderAll();
+      showToast(`現在スタミナを ${next} / ${maxSt} ST に変更しました`, 'info');
+    }
+
+    function exportJSONFile() {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `stamina_quest_v2_${getDateKey()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('JSONファイルをダウンロードしました', 'success');
+    }
+
+    function copyJSONToClipboard() {
+      const ta = document.createElement('textarea');
+      ta.value = JSON.stringify(state);
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('JSONデータをコピーしました', 'success');
+      } catch (e) {
+        showToast('コピーに失敗しました', 'error');
+      }
+      document.body.removeChild(ta);
+    }
+
+    function applyImportedJSON(rawText) {
+      try {
+        const parsed = JSON.parse(rawText);
+        if (!parsed || typeof parsed !== 'object' || !parsed.settings || !parsed.stamina) throw new Error();
+        const def = createDefaultState();
+        state = {
+          ...def,
+          ...parsed,
+          settings: { ...def.settings, ...parsed.settings },
+          notifications: { ...def.notifications, ...(parsed.notifications || {}) },
+          stamina: { ...def.stamina, ...parsed.stamina },
+          profile: { ...def.profile, ...(parsed.profile || {}) },
+          streak: { ...def.streak, ...(parsed.streak || {}) },
+        };
+        saveState();
+        renderAll();
+        closeModal('modal-settings');
+        showToast('データをインポートしました！', 'success');
+      } catch (e) {
+        showToast('JSONの形式が正しくありません', 'error');
+      }
+    }
+
+    function importJSONFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => applyImportedJSON(reader.result);
+      reader.readAsText(file);
+      e.target.value = '';
+    }
+
+    function importJSONText() {
+      const txt = document.getElementById('import-json-text').value.trim();
+      if (!txt) return;
+      applyImportedJSON(txt);
+      document.getElementById('import-json-text').value = '';
+    }
+
+    function requestResetData() {
+      openConfirm('データ初期化', 'すべての記録・クエスト・ToDo・コインを初期状態に戻しますか？', () => {
+        state = createDefaultState();
+        saveState();
+        activeInAppAlerts = [];
+        renderInAppAlerts();
+        renderAll();
+        closeModal('modal-settings');
+        showToast('データを初期化しました', 'info');
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // レベル計算
+    // -------------------------------------------------------------------------
+    function calcLevel(qp) {
+      let level = 1, needed = 100, rem = qp;
+      while (rem >= needed) {
+        rem -= needed;
+        level++;
+        needed = Math.round(100 + (level - 1) * 35);
+      }
+      return { level, pct: Math.min(100, Math.round((rem / needed) * 100)) };
+    }
+
+    // -------------------------------------------------------------------------
+    // UI レンダリング
+    // -------------------------------------------------------------------------
+    function renderAll() {
+      renderHeader();
+      renderStaminaCard();
+      renderHomeRingsAndBanner();
+      renderQuests();
+      renderTodos();
+      renderReport();
+      renderMissions();
+      renderShop();
+      renderLogs();
+      updateTabStyles();
+      lucide.createIcons();
+    }
+
+    function renderHeader() {
+      const lv = calcLevel(state.profile.qp);
+      document.getElementById('header-level-badge').textContent = `Lv.${lv.level}`;
+      document.getElementById('header-qp-bar').style.width = `${lv.pct}%`;
+      document.getElementById('header-qp-text').textContent = `${state.profile.qp} QP`;
+      document.getElementById('header-coins').textContent = state.profile.coins.toLocaleString();
+
+      const effStreak = getEffectiveStreak();
+      document.getElementById('header-streak-text').textContent = `${effStreak}日`;
+      document.getElementById('header-streak-dot').classList.toggle('hidden', isTodayLoginClaimed());
+
+      const notifBtn = document.getElementById('header-notif-btn');
+      const notifIcon = document.getElementById('header-notif-icon');
+      if (state.notifications.enabled) {
+        notifBtn.className = 'p-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 transition active:scale-95';
+        notifIcon.setAttribute('data-lucide', 'bell-ring');
+      } else {
+        notifBtn.className = 'p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-500 transition active:scale-95';
+        notifIcon.setAttribute('data-lucide', 'bell-off');
+      }
+    }
+
+    function renderStaminaCard() {
+      const { nextRegenMs, fullRegenMs } = updateStaminaRegen();
+      checkNotifications(fullRegenMs);
+
+      const cur = state.stamina.current;
+      const max = state.settings.maxStamina;
+      const pct = Math.min(100, Math.max(0, (cur / max) * 100));
+
+      document.getElementById('stamina-current').textContent = cur;
+      document.getElementById('stamina-max').textContent = max;
+      document.getElementById('timer-next-regen').textContent = cur >= max ? 'MAX' : formatMMSS(nextRegenMs);
+      document.getElementById('timer-full-eta').textContent = cur >= max ? '満タン' : formatETA(fullRegenMs);
+
+      const bar = document.getElementById('stamina-bar-fill');
+      bar.style.width = `${pct}%`;
+      if (cur >= max) {
+        bar.className = 'stamina-bar-shine h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400 transition-all duration-500';
+      } else if (pct <= 15) {
+        bar.className = 'stamina-bar-shine h-full rounded-full bg-gradient-to-r from-rose-500 to-amber-500 transition-all duration-500';
+      } else {
+        bar.className = 'stamina-bar-shine h-full rounded-full bg-gradient-to-r from-emerald-500 via-cyan-400 to-indigo-400 transition-all duration-500';
+      }
+
+      const banner = document.getElementById('stamina-alert-banner');
+      const icon = document.getElementById('stamina-alert-icon');
+      const text = document.getElementById('stamina-alert-text');
+      const minCost = state.quests.length ? Math.min(...state.quests.map(q => q.cost)) : 1;
+
+      if (cur >= max) {
+        banner.className = 'rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-xs sm:text-sm font-extrabold bg-amber-500/18 border border-amber-400/50 text-amber-200 animate-pulse-slow';
+        icon.setAttribute('data-lucide', 'alert-triangle');
+        text.textContent = '⚠️ スタミナが溢れています！タスクをこなして消費しましょう';
+      } else if (cur < minCost) {
+        banner.className = 'rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-xs sm:text-sm font-bold bg-indigo-500/15 border border-indigo-400/35 text-indigo-200';
+        icon.setAttribute('data-lucide', 'moon');
+        text.textContent = '本日の可処分時間を使い切りました。やりすぎ防止のため、回復までゆっくり休憩しましょう。';
+      } else {
+        banner.className = 'hidden';
+      }
+    }
+
+    function renderHomeRingsAndBanner() {
+      // ログインボーナスバナー
+      const banner = document.getElementById('login-bonus-banner');
+      banner.classList.toggle('hidden', isTodayLoginClaimed());
+
+      // 今日の目標リング
+      const todayStats = getStatsForDate(getDateKey());
+      const dutyGoal = state.settings.dailyDutyGoal;
+      const totalGoal = state.settings.dailyTotalGoal;
+
+      const dutyRatio = Math.min(1, todayStats.dutySt / dutyGoal);
+      const totalRatio = Math.min(1, todayStats.totalSt / totalGoal);
+
+      const outerCirc = 339.292;
+      const innerCirc = 251.327;
+      document.getElementById('home-ring-duty').setAttribute('stroke-dashoffset', (outerCirc * (1 - dutyRatio)).toFixed(2));
+      document.getElementById('home-ring-total').setAttribute('stroke-dashoffset', (innerCirc * (1 - totalRatio)).toFixed(2));
+
+      const avgPct = Math.round(((dutyRatio + totalRatio) / 2) * 100);
+      document.getElementById('home-ring-pct').textContent = `${avgPct}%`;
+      document.getElementById('home-ring-center-icon').textContent = todayStats.achieved ? '🏆' : '🎯';
+      document.getElementById('home-achieved-badge').classList.toggle('hidden', !todayStats.achieved);
+
+      document.getElementById('home-duty-val').textContent = todayStats.dutySt;
+      document.getElementById('home-duty-goal').textContent = dutyGoal;
+      document.getElementById('home-duty-pct').textContent = `${Math.round((todayStats.dutySt / dutyGoal) * 100)}%`;
+
+      document.getElementById('home-total-val').textContent = todayStats.totalSt;
+      document.getElementById('home-total-goal').textContent = totalGoal;
+      document.getElementById('home-total-pct').textContent = `${Math.round((todayStats.totalSt / totalGoal) * 100)}%`;
+
+      // バランスミニバー
+      const dutyBalPct = todayStats.totalSt > 0 ? Math.round((todayStats.dutySt / todayStats.totalSt) * 100) : 0;
+      const playBalPct = todayStats.totalSt > 0 ? 100 - dutyBalPct : 0;
+      document.getElementById('home-bal-duty-pct').textContent = dutyBalPct;
+      document.getElementById('home-bal-play-pct').textContent = playBalPct;
+      document.getElementById('home-bal-duty-bar').style.width = `${dutyBalPct}%`;
+      document.getElementById('home-bal-play-bar').style.width = `${playBalPct}%`;
+      const msgEl = document.getElementById('home-bal-msg');
+      if (todayStats.totalSt === 0) msgEl.textContent = 'まずは1つ始めてみましょう';
+      else if (playBalPct >= 60) msgEl.textContent = '次は「やるべきこと」に回そう';
+      else msgEl.textContent = '良いバランスです！';
+    }
+
+    function renderQuests() {
+      const dutyList = state.quests.filter(q => q.category === 'duty');
+      const playList = state.quests.filter(q => q.category === 'play');
+      document.getElementById('quest-list-duty').innerHTML = dutyList.length
+        ? dutyList.map(buildQuestCard).join('')
+        : `<p class="text-xs text-slate-500 text-center py-5">クエストがありません</p>`;
+      document.getElementById('quest-list-play').innerHTML = playList.length
+        ? playList.map(buildQuestCard).join('')
+        : `<p class="text-xs text-slate-500 text-center py-5">クエストがありません</p>`;
+    }
+
+    function buildQuestCard(q) {
+      const canAfford = state.stamina.current >= q.cost;
+      const isDuty = q.category === 'duty';
+      const btnCls = canAfford
+        ? (isDuty
+            ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 shadow-lg shadow-emerald-500/20 active:scale-95'
+            : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white shadow-lg shadow-purple-500/20 active:scale-95')
+        : 'bg-slate-800 text-slate-500 cursor-not-allowed';
+
+      return `
+        <div class="rounded-xl bg-slate-950/80 border ${isDuty ? 'border-emerald-500/20 hover:border-emerald-400/45' : 'border-purple-500/20 hover:border-purple-400/45'} p-3.5 transition flex items-center justify-between gap-2.5">
+          <div class="min-w-0 flex-1 space-y-1.5">
+            <h4 class="text-sm font-bold text-slate-100 truncate">${escapeHTML(q.title)}</h4>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-200 text-[11px] font-extrabold">-${q.cost} ST</span>
+              ${isDuty
+                ? `<span class="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[11px] font-bold">+${q.coinReward}C</span>`
+                : `<span class="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-300 border border-purple-500/20 text-[11px] font-semibold">リフレッシュ</span>`}
+            </div>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <button onclick="openQuestModal('${q.id}')" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-800"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+            <button onclick="deleteQuest('${q.id}')" class="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-800"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+            <button onclick="executeQuest('${q.id}', event)" class="px-3.5 py-2 rounded-xl text-xs font-extrabold transition ${btnCls}">実行</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTodos() {
+      const active = state.todos.filter(t => !t.completed);
+      const done = state.todos.filter(t => t.completed);
+
+      document.getElementById('todo-active-count').textContent = active.length;
+      document.getElementById('todo-done-count').textContent = done.length;
+
+      const activeEl = document.getElementById('todo-list-active');
+      if (!active.length) {
+        activeEl.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">未完了の単発ToDoはありません。「単発ToDo追加」から登録できます。</p>`;
+      } else {
+        activeEl.innerHTML = active.map(t => {
+          const isDuty = t.category === 'duty';
+          const canAfford = state.stamina.current >= t.cost;
+          const todayKey = getDateKey();
+          const isOverdue = t.dueDate && t.dueDate < todayKey;
+          return `
+            <div class="rounded-xl bg-slate-950/80 border border-slate-800 hover:border-emerald-500/40 p-3 flex items-center justify-between gap-3 transition">
+              <div class="flex items-center gap-3 min-w-0 flex-1">
+                <button onclick="completeTodo('${t.id}', event)" title="チェックして完了" class="w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition ${canAfford ? 'border-emerald-400 hover:bg-emerald-500/20 text-transparent hover:text-emerald-300' : 'border-slate-700 text-transparent cursor-not-allowed'}">
+                  <i data-lucide="check" class="w-4 h-4"></i>
+                </button>
+                <div class="min-w-0 flex-1 space-y-1">
+                  <div class="flex items-center gap-2">
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${isDuty ? 'bg-emerald-500/15 text-emerald-300' : 'bg-purple-500/15 text-purple-300'}">${isDuty ? 'やるべきこと' : '遊び'}</span>
+                    <span class="text-sm font-bold text-slate-100 truncate">${escapeHTML(t.title)}</span>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2 text-[11px]">
+                    <span class="font-extrabold text-slate-300">-${t.cost} ST</span>
+                    ${t.coinReward > 0 ? `<span class="font-bold text-amber-300">+${t.coinReward}C</span>` : ''}
+                    ${t.dueDate ? `<span class="${isOverdue ? 'text-rose-400 font-bold' : 'text-slate-400'}">期限: ${t.dueDate}</span>` : ''}
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button onclick="openTodoModal('${t.id}')" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-800"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+                <button onclick="deleteTodo('${t.id}')" class="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-800"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      const doneEl = document.getElementById('todo-list-completed');
+      if (!done.length) {
+        doneEl.innerHTML = `<p class="text-xs text-slate-500 text-center py-3">完了済みのToDoはまだありません</p>`;
+      } else {
+        doneEl.innerHTML = done.map(t => `
+          <div class="rounded-xl bg-slate-950/40 border border-slate-800/60 px-3 py-2.5 flex items-center justify-between gap-2 opacity-75">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0"></i>
+              <span class="text-xs sm:text-sm font-medium text-slate-400 line-through truncate">${escapeHTML(t.title)}</span>
+              <span class="text-[11px] text-slate-500 shrink-0">(${t.cost} ST)</span>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button onclick="uncompleteTodo('${t.id}')" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-slate-300">元に戻す</button>
+              <button onclick="deleteTodo('${t.id}')" class="p-1.5 rounded-lg text-slate-500 hover:text-rose-400"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    function renderReport() {
+      // 1. 今日・今週・今月の目標達成カード
+      const todayStats = getStatsForDate(getDateKey());
+      const weekStats = getStatsForPeriod('weekly');
+      const monthStats = getStatsForPeriod('monthly');
+
+      const cards = [
+        {
+          label: '今日の目標',
+          sub: 'やるべきこと ST',
+          val: todayStats.dutySt,
+          goal: state.settings.dailyDutyGoal,
+          achieved: todayStats.achieved,
+          achievedLabel: '🎉 今日は目標を達成しました！',
+          color: 'from-emerald-400 to-cyan-400',
+        },
+        {
+          label: '今週の目標',
+          sub: 'やるべきこと ST',
+          val: weekStats.dutySt,
+          goal: state.settings.weeklyDutyGoal,
+          achieved: weekStats.dutySt >= state.settings.weeklyDutyGoal,
+          achievedLabel: '🏆 今週は目標を達成しました！',
+          color: 'from-indigo-400 to-cyan-400',
+        },
+        {
+          label: '今月の目標',
+          sub: 'やるべきこと ST',
+          val: monthStats.dutySt,
+          goal: state.settings.monthlyDutyGoal,
+          achieved: monthStats.dutySt >= state.settings.monthlyDutyGoal,
+          achievedLabel: '👑 今月は目標を達成しました！',
+          color: 'from-amber-400 to-emerald-400',
+        },
+      ];
+
+      document.getElementById('report-period-cards').innerHTML = cards.map(c => {
+        const pct = Math.min(100, Math.round((c.val / c.goal) * 100));
+        const rem = Math.max(0, c.goal - c.val);
+        return `
+          <div class="rounded-2xl bg-slate-900/85 border ${c.achieved ? 'border-emerald-400/50' : 'border-slate-800'} p-4 space-y-3 flex flex-col justify-between">
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-extrabold text-slate-300">${c.label}</span>
+                ${c.achieved
+                  ? `<span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-black">達成済み</span>`
+                  : `<span class="text-[11px] font-bold text-slate-400">残り ${rem} ST</span>`}
+              </div>
+              <div class="flex items-baseline gap-1.5">
+                <span class="text-2xl font-black text-white tabular-nums">${c.val}</span>
+                <span class="text-xs font-bold text-slate-400">/ ${c.goal} ST (${c.sub})</span>
+              </div>
+            </div>
+            <div class="space-y-1.5">
+              <div class="w-full h-2.5 rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
+                <div class="h-full rounded-full bg-gradient-to-r ${c.color} transition-all duration-700" style="width: ${pct}%"></div>
+              </div>
+              <p class="text-[11px] font-bold ${c.achieved ? 'text-emerald-300' : 'text-slate-400'}">
+                ${c.achieved ? c.achievedLabel : `達成率 ${pct}%`}
+              </p>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // 2. 今週の7日間ミニリング（月〜日）
+      const monday = getMondayOfWeek();
+      const dayNames = ['月', '火', '水', '木', '金', '土', '日'];
+      const todayKey = getDateKey();
+      const miniOuter = 2 * Math.PI * 18; // ~113.1
+      const miniInner = 2 * Math.PI * 12; // ~75.4
+
+      let weekRingsHtml = '';
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const key = getDateKey(d);
+        const st = getStatsForDate(key);
+        const dRatio = Math.min(1, st.dutySt / state.settings.dailyDutyGoal);
+        const tRatio = Math.min(1, st.totalSt / state.settings.dailyTotalGoal);
+        const isToday = key === todayKey;
+
+        weekRingsHtml += `
+          <div class="flex flex-col items-center gap-1 p-1.5 rounded-xl ${isToday ? 'bg-indigo-500/15 border border-indigo-400/40' : 'bg-slate-950/50 border border-slate-800/60'}">
+            <span class="text-[10px] font-extrabold ${isToday ? 'text-indigo-300' : 'text-slate-400'}">${dayNames[i]}</span>
+            <div class="relative w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center">
+              <svg viewBox="0 0 44 44" class="w-full h-full">
+                <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(16,185,129,0.16)" stroke-width="4" />
+                <circle cx="22" cy="22" r="12" fill="none" stroke="rgba(99,102,241,0.18)" stroke-width="4" />
+                <circle cx="22" cy="22" r="18" fill="none" stroke="#10b981" stroke-width="4" stroke-linecap="round"
+                  stroke-dasharray="${miniOuter.toFixed(1)}" stroke-dashoffset="${(miniOuter * (1 - dRatio)).toFixed(1)}" transform="rotate(-90 22 22)" />
+                <circle cx="22" cy="22" r="12" fill="none" stroke="#6366f1" stroke-width="4" stroke-linecap="round"
+                  stroke-dasharray="${miniInner.toFixed(1)}" stroke-dashoffset="${(miniInner * (1 - tRatio)).toFixed(1)}" transform="rotate(-90 22 22)" />
+              </svg>
+              ${st.achieved ? `<span class="absolute text-[10px]">🏆</span>` : ''}
+            </div>
+            <span class="text-[10px] font-bold text-slate-400 tabular-nums">${st.totalSt}</span>
+          </div>
+        `;
+      }
+      document.getElementById('report-week-rings').innerHTML = weekRingsHtml;
+
+      // 3. バランスバー（今日・今週・今月）
+      const balRows = [
+        { label: '今日', stats: todayStats },
+        { label: '今週', stats: weekStats },
+        { label: '今月', stats: monthStats },
+      ];
+      document.getElementById('report-balance-bars').innerHTML = balRows.map(r => {
+        const dPct = r.stats.totalSt > 0 ? Math.round((r.stats.dutySt / r.stats.totalSt) * 100) : 0;
+        const pPct = r.stats.totalSt > 0 ? 100 - dPct : 0;
+        return `
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-bold">
+              <span class="text-slate-300">${r.label}（計 ${r.stats.totalSt} ST）</span>
+              <span>
+                <span class="text-emerald-300">やるべきこと ${r.stats.dutySt} ST (${dPct}%)</span>
+                <span class="text-slate-600 mx-1">/</span>
+                <span class="text-purple-300">遊び ${r.stats.playSt} ST (${pPct}%)</span>
+              </span>
+            </div>
+            <div class="w-full h-2.5 rounded-full bg-slate-950 border border-slate-800 overflow-hidden flex">
+              <div class="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-500" style="width: ${dPct}%"></div>
+              <div class="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500" style="width: ${pPct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // 4. 今月の達成カレンダー
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      document.getElementById('report-calendar-title').innerHTML =
+        `<i data-lucide="calendar" class="w-4 h-4 text-emerald-400"></i> ${year}年${month + 1}月の達成カレンダー`;
+
+      const firstDay = new Date(year, month, 1);
+      const lastDate = new Date(year, month + 1, 0).getDate();
+      const startOffset = (firstDay.getDay() + 6) % 7; // 月曜=0
+
+      let calHtml = '';
+      for (let i = 0; i < startOffset; i++) {
+        calHtml += `<div class="h-12 sm:h-14 rounded-lg bg-slate-950/25"></div>`;
+      }
+      for (let d = 1; d <= lastDate; d++) {
+        const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const st = getStatsForDate(key);
+        const isToday = key === todayKey;
+        let bgCls = 'bg-slate-950/60 border-slate-800/80';
+        if (st.achieved) bgCls = 'bg-emerald-500/20 border-emerald-400/50';
+        else if (st.totalSt > 0) bgCls = 'bg-indigo-500/15 border-indigo-500/35';
+
+        calHtml += `
+          <div class="h-12 sm:h-14 rounded-xl border p-1 flex flex-col justify-between ${bgCls} ${isToday ? 'ring-2 ring-cyan-400' : ''}">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold ${isToday ? 'text-cyan-300' : 'text-slate-400'}">${d}</span>
+              ${st.achieved ? `<span class="text-[11px] leading-none">🏆</span>` : ''}
+            </div>
+            <span class="text-[10px] font-extrabold text-center tabular-nums ${st.totalSt > 0 ? 'text-white' : 'text-slate-600'}">
+              ${st.totalSt > 0 ? `${st.totalSt}` : '-'}
+            </span>
+          </div>
+        `;
+      }
+      document.getElementById('report-calendar-grid').innerHTML = calHtml;
+    }
+
+    function renderMissions() {
+      const counts = { daily: 0, weekly: 0, monthly: 0 };
+      state.missions.forEach(m => {
+        const p = calcMissionProgress(m);
+        if (p.isCompleted && !p.isClaimed) counts[m.period]++;
+      });
+      const totalClaimable = counts.daily + counts.weekly + counts.monthly;
+
+      document.querySelectorAll('.mission-badge').forEach(el => {
+        el.textContent = totalClaimable;
+        el.classList.toggle('hidden', totalClaimable === 0);
+      });
+      ['daily', 'weekly', 'monthly'].forEach(p => {
+        const b = document.getElementById(`badge-${p}`);
+        b.textContent = counts[p];
+        b.classList.toggle('hidden', counts[p] === 0);
+      });
+
+      document.querySelectorAll('.mission-period-btn').forEach(btn => {
+        const active = btn.dataset.period === currentMissionPeriod;
+        btn.className = active
+          ? 'mission-period-btn relative py-2 px-2 rounded-lg text-xs sm:text-sm font-extrabold bg-indigo-600 text-white shadow transition'
+          : 'mission-period-btn relative py-2 px-2 rounded-lg text-xs sm:text-sm font-bold text-slate-400 hover:text-slate-200 transition';
+      });
+
+      const periodLabels = {
+        daily: `対象日: ${getDateKey()}（毎日 0:00 自動リセット）`,
+        weekly: `対象週: ${getWeekKey().replace('W_', '')}〜（毎週月曜 0:00 自動リセット）`,
+        monthly: `対象月: ${getMonthKey()}（毎月1日 0:00 自動リセット）`,
+      };
+      document.getElementById('mission-period-info').textContent = periodLabels[currentMissionPeriod];
+
+      const list = state.missions.filter(m => m.period === currentMissionPeriod);
+      const container = document.getElementById('mission-list');
+      if (!list.length) {
+        container.innerHTML = `<div class="col-span-full text-center py-8 rounded-2xl bg-slate-900/50 border border-slate-800 text-xs text-slate-400">この期間のミッションはありません</div>`;
+        return;
+      }
+
+      container.innerHTML = list.map(m => {
+        const prog = calcMissionProgress(m);
+        const pct = Math.min(100, Math.round((prog.current / prog.target) * 100));
+        const unit = m.metric.includes('stamina') ? 'ST' : m.metric === 'todo_count' ? '件' : '回';
+
+        let btnHtml = `<span class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-500 text-xs font-bold">進行中</span>`;
+        if (prog.isClaimed) {
+          btnHtml = `<span class="px-3 py-1.5 rounded-xl bg-slate-800 text-emerald-400 text-xs font-extrabold">✅ 受取済</span>`;
+        } else if (prog.isCompleted) {
+          btnHtml = `<button onclick="claimMission('${m.id}', event)" class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-300 text-slate-950 text-xs font-black animate-glow active:scale-95 transition">報酬を受け取る</button>`;
+        }
+
+        return `
+          <div class="rounded-2xl bg-slate-900/80 border ${prog.isCompleted && !prog.isClaimed ? 'border-amber-400/60' : 'border-slate-800'} p-4 space-y-3 flex flex-col justify-between">
+            <div class="space-y-2">
+              <div class="flex items-start justify-between gap-2">
+                <h4 class="text-sm font-bold text-white leading-snug">${escapeHTML(m.title)}</h4>
+                <div class="flex items-center gap-1 shrink-0">
+                  <button onclick="openMissionModal('${m.id}')" class="p-1 rounded-lg text-slate-500 hover:text-slate-200"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+                  <button onclick="deleteMission('${m.id}')" class="p-1 rounded-lg text-slate-500 hover:text-rose-400"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                </div>
+              </div>
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs font-semibold">
+                  <span class="text-slate-400">${Math.min(prog.current, prog.target)} / ${prog.target} ${unit}</span>
+                  <span class="${prog.isCompleted ? 'text-amber-300' : 'text-indigo-300'}">${pct}%</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-slate-950 overflow-hidden border border-slate-800">
+                  <div class="h-full rounded-full transition-all duration-500 ${prog.isCompleted ? 'bg-gradient-to-r from-amber-400 to-emerald-400' : 'bg-gradient-to-r from-indigo-500 to-cyan-400'}" style="width: ${pct}%"></div>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-slate-800/80">
+              <span class="flex items-center gap-1 text-xs font-extrabold text-amber-300"><i data-lucide="coins" class="w-3.5 h-3.5 text-amber-400"></i>+${m.coinReward} コイン</span>
+              ${btnHtml}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderShop() {
+      const container = document.getElementById('shop-list');
+      if (!state.rewards.length) {
+        container.innerHTML = `<div class="col-span-full text-center py-8 rounded-2xl bg-slate-900/50 border border-slate-800 text-xs text-slate-400">登録されたご褒美がありません</div>`;
+        return;
+      }
+      container.innerHTML = state.rewards.map(r => {
+        const canBuy = state.profile.coins >= r.cost;
+        return `
+          <div class="rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-pink-500/40 p-4 flex flex-col justify-between gap-4 transition">
+            <div class="space-y-1.5">
+              <div class="flex items-start justify-between gap-2">
+                <div class="w-9 h-9 rounded-xl bg-pink-500/15 border border-pink-500/30 flex items-center justify-center text-pink-400"><i data-lucide="gift" class="w-4 h-4"></i></div>
+                <div class="flex items-center gap-1">
+                  <button onclick="openRewardModal('${r.id}')" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-200"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+                  <button onclick="deleteReward('${r.id}')" class="p-1.5 rounded-lg text-slate-500 hover:text-rose-400"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                </div>
+              </div>
+              <h4 class="text-sm font-extrabold text-white pt-1">${escapeHTML(r.title)}</h4>
+              ${r.description ? `<p class="text-xs text-slate-400">${escapeHTML(r.description)}</p>` : ''}
+            </div>
+            <div class="flex items-center justify-between pt-3 border-t border-slate-800/80">
+              <span class="flex items-center gap-1 text-sm font-black text-amber-300"><i data-lucide="coins" class="w-4 h-4 text-amber-400"></i>${r.cost}</span>
+              <button onclick="redeemReward('${r.id}')" class="px-4 py-2 rounded-xl text-xs font-extrabold transition ${canBuy ? 'bg-pink-600 hover:bg-pink-500 text-white active:scale-95' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}">交換する</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderLogs() {
+      const filter = document.getElementById('log-filter').value;
+      const filtered = state.logs.filter(l => {
+        if (filter === 'all') return true;
+        if (filter === 'reward') return l.type === 'reward';
+        if (filter === 'todo') return l.type === 'todo';
+        return (l.type === 'quest' || l.type === 'todo') && l.category === filter;
+      });
+      const container = document.getElementById('log-list');
+      if (!filtered.length) {
+        container.innerHTML = `<div class="text-center py-8 rounded-2xl bg-slate-900/50 border border-slate-800 text-xs text-slate-400">履歴がまだありません</div>`;
+        return;
+      }
+      container.innerHTML = filtered.slice(0, 60).map(l => {
+        const dt = new Date(l.timestamp);
+        const timeStr = `${dt.getMonth() + 1}/${dt.getDate()} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+        let badge = '';
+        let detail = '';
+        if (l.type === 'reward') {
+          badge = `<span class="px-2 py-0.5 rounded bg-pink-500/15 text-pink-300 text-[10px] font-bold">ご褒美</span>`;
+          detail = `<span class="text-xs font-bold text-amber-300">${l.coinDelta}C</span>`;
+        } else if (l.category === 'duty') {
+          badge = `<span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 text-[10px] font-bold">${l.type === 'todo' ? 'ToDo' : 'やるべきこと'}</span>`;
+          detail = `<span class="text-xs font-bold text-slate-300">-${l.cost}ST</span> <span class="text-xs font-bold text-amber-300">+${l.coinDelta}C</span>`;
+        } else {
+          badge = `<span class="px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 text-[10px] font-bold">遊び</span>`;
+          detail = `<span class="text-xs font-bold text-slate-300">-${l.cost}ST</span>`;
+        }
+        return `
+          <div class="rounded-xl bg-slate-900/75 border border-slate-800 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="text-[11px] font-mono text-slate-500 shrink-0">${timeStr}</span>
+              ${badge}
+              <span class="text-xs sm:text-sm font-bold text-slate-200 truncate">${escapeHTML(l.title)}</span>
+            </div>
+            <div class="flex items-center gap-2.5 shrink-0">
+              <div class="flex items-center gap-1.5">${detail}</div>
+              <button onclick="undoLog('${l.id}')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-[11px] font-bold text-slate-400 hover:text-rose-300">取り消し</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // -------------------------------------------------------------------------
+    // ナビゲーション・モーダル・演出
+    // -------------------------------------------------------------------------
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+      updateTabStyles();
+      if (tab === 'report') renderReport();
+      lucide.createIcons();
+    }
+
+    function switchHomeSubTab(sub) {
+      currentHomeSubTab = sub;
+      document.getElementById('home-subtab-quests').classList.toggle('hidden', sub !== 'quests');
+      document.getElementById('home-subtab-todos').classList.toggle('hidden', sub !== 'todos');
+      document.getElementById('btn-add-quest').classList.toggle('hidden', sub !== 'quests');
+      document.getElementById('btn-add-todo').classList.toggle('hidden', sub !== 'todos');
+      updateTabStyles();
+      lucide.createIcons();
+    }
+
+    function updateTabStyles() {
+      document.querySelectorAll('.nav-tab').forEach(btn => {
+        const active = btn.dataset.tab === currentTab;
+        btn.className = active
+          ? 'nav-tab relative flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-extrabold bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 transition'
+          : 'nav-tab relative flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-bold text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition';
+      });
+      document.querySelectorAll('.nav-tab-mobile').forEach(btn => {
+        const active = btn.dataset.tab === currentTab;
+        btn.className = active
+          ? 'nav-tab-mobile relative flex flex-col items-center justify-center py-1.5 rounded-xl text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 transition'
+          : 'nav-tab-mobile relative flex flex-col items-center justify-center py-1.5 rounded-xl text-[10px] font-bold text-slate-500 transition';
+      });
+
+      const qBtn = document.getElementById('subtab-btn-quests');
+      const tBtn = document.getElementById('subtab-btn-todos');
+      qBtn.className = currentHomeSubTab === 'quests'
+        ? 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-extrabold bg-indigo-600 text-white shadow transition flex items-center gap-1.5'
+        : 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5';
+      tBtn.className = currentHomeSubTab === 'todos'
+        ? 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-extrabold bg-emerald-600 text-white shadow transition flex items-center gap-1.5'
+        : 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5';
+    }
+
+    function switchMissionPeriod(p) {
+      currentMissionPeriod = p;
+      renderMissions();
+      lucide.createIcons();
+    }
+
+    function closeModal(id) {
+      const m = document.getElementById(id);
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    function openConfirm(title, message, onOk, okText = '実行する', okCls = 'bg-rose-600 hover:bg-rose-500') {
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = message;
+      const btn = document.getElementById('confirm-ok-btn');
+      btn.textContent = okText;
+      btn.className = `px-4 py-2 rounded-xl text-xs font-bold text-white transition ${okCls}`;
+      confirmCallback = onOk;
+      const m = document.getElementById('modal-confirm');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+
+    function closeConfirm(ok) {
+      closeModal('modal-confirm');
+      if (ok && typeof confirmCallback === 'function') confirmCallback();
+      confirmCallback = null;
+    }
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const el = document.createElement('div');
+      const map = {
+        success: 'bg-emerald-950/95 border-emerald-500/50 text-emerald-200',
+        gold:    'bg-amber-950/95 border-amber-400/60 text-amber-200',
+        warning: 'bg-rose-950/95 border-rose-500/50 text-rose-200',
+        error:   'bg-rose-950/95 border-rose-500/50 text-rose-200',
+        info:    'bg-slate-900/95 border-indigo-500/40 text-slate-200',
+      };
+      el.className = `pointer-events-auto px-4 py-3 rounded-xl border shadow-xl text-xs font-bold leading-snug backdrop-blur-md transition-all duration-300 animate-pop ${map[type] || map.info}`;
+      el.textContent = msg;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(20px)';
+        setTimeout(() => el.remove(), 300);
+      }, 3300);
+    }
+
+    function spawnFloatingText(event, text, colorClass = 'text-white') {
+      if (!event) return;
+      const el = document.createElement('div');
+      el.className = `fixed z-50 pointer-events-none text-sm font-black drop-shadow-md animate-float-up ${colorClass}`;
+      el.textContent = text;
+      const x = event.clientX || window.innerWidth / 2;
+      const y = event.clientY || window.innerHeight / 2;
+      el.style.left = `${Math.min(window.innerWidth - 150, Math.max(20, x - 40))}px`;
+      el.style.top = `${Math.max(40, y - 20)}px`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 1100);
+    }
+
+    function spawnConfetti() {
+      const colors = ['#10b981', '#6366f1', '#fbbf24', '#f472b6', '#38bdf8'];
+      for (let i = 0; i < 28; i++) {
+        const p = document.createElement('div');
+        p.className = 'confetti-piece';
+        p.style.backgroundColor = colors[i % colors.length];
+        p.style.left = `${20 + Math.random() * 60}vw`;
+        p.style.top = `${15 + Math.random() * 20}vh`;
+        p.animate([
+          { transform: 'translate(0, 0) rotate(0deg)', opacity: 1 },
+          { transform: `translate(${(Math.random() - 0.5) * 240}px, ${180 + Math.random() * 260}px) rotate(${(Math.random() - 0.5) * 720}deg)`, opacity: 0 }
+        ], { duration: 900 + Math.random() * 450, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)', fill: 'forwards' });
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), 1450);
+      }
+    }
+
+    function escapeHTML(str) {
+      return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    // -------------------------------------------------------------------------
+    // 初期化 & 1秒ループ
+    // -------------------------------------------------------------------------
+    window.addEventListener('DOMContentLoaded', () => {
+      renderAll();
+
+      // 本日初回アクセスでログインボーナス未受取ならモーダルを案内
+      if (!isTodayLoginClaimed()) {
+        setTimeout(() => openLoginBonusModal(), 350);
+      }
+
+      setInterval(() => {
+        const prev = state.stamina.current;
+        renderStaminaCard();
+        if (state.stamina.current !== prev) {
+          renderQuests();
+          renderTodos();
+          lucide.createIcons();
+        }
+      }, 1000);
+    });
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('SW registered:', reg.scope))
+          .catch((err) => console.error('SW registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>
